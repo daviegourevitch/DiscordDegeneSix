@@ -17,7 +17,7 @@ bot = Bot(command_prefix=when_mentioned_or(*BOT_PREFIX))
     aliases=['D6', '6pool','roll','dee6'],
     pass_context=True)
 async def degenesix(context,actionNumber:int,difficulty=0):
-    autos = min(actionNumber-12, 0)
+    autos = max(actionNumber-12, 0)
     actionNumber -= autos
 	
     roll = np.random.randint(1, 6, actionNumber)
