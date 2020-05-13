@@ -5,7 +5,8 @@ import discord
 from discord.ext.commands import Bot, when_mentioned_or
 
 BOT_PREFIX = ("?", "!")
-TOKEN = os.environ.get('ACCESS_TOKEN') # Get at discordapp.com/developers/applications/me
+TOKEN = os.environ.get('TOKEN') # Get at discordapp.com/developers/applications/me
+print(TOKEN)
 
 bot = Bot(command_prefix=when_mentioned_or(*BOT_PREFIX))
 
