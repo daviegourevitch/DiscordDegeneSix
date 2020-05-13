@@ -6,15 +6,14 @@ from discord.ext.commands import Bot, when_mentioned_or
 
 BOT_PREFIX = ("!")
 TOKEN = os.environ.get('TOKEN') # Get at discordapp.com/developers/applications/me
-print(TOKEN)
+print("Current token: " + TOKEN)
 
 bot = Bot(command_prefix=when_mentioned_or(*BOT_PREFIX))
 
 @bot.command(
-    name='Degene6',
-    description="",
+    name='Degenesis Dice Roller',
     brief="Roll a dice pool for Degenesis",
-    aliases=['D6', '6pool','roll','dee6'],
+    aliases=['DD', 'roll','deg6'],
     pass_context=True)
 async def degenesix(context,actionNumber:int,difficulty=0):
     autos = max(actionNumber-12, 0)
