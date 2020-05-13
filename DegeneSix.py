@@ -4,7 +4,7 @@ import os
 import discord
 from discord.ext.commands import Bot, when_mentioned_or
 
-BOT_PREFIX = ("?", "!")
+BOT_PREFIX = ("!")
 TOKEN = os.environ.get('TOKEN') # Get at discordapp.com/developers/applications/me
 print(TOKEN)
 
@@ -12,14 +12,15 @@ bot = Bot(command_prefix=when_mentioned_or(*BOT_PREFIX))
 
 @bot.command(
     name='Degene6',
-    description="Rolls a Degenesis dice pool.",
-    brief="Sacrifice everything",
+    description="",
+    brief="Roll a dice pool for Degenesis",
     aliases=['D6', '6pool','roll','dee6'],
     pass_context=True)
 async def degenesix(context,actionNumber:int,difficulty=0):
-    autos = 0 if actionNumber < 13 else actionNumber-12
-    actionNumber = 12 if actionNumber > 13 else actionNumber
-    roll = np.random.choice([1,2,3,4,5,6],actionNumber)
+    autos = min(actionNumber-12, 0)
+    actionNumber -= autos
+	
+    roll = np.random.randint(1, 6, actionNumber)
     successes = (roll > 3).sum()
     successes += autos
     triggers = (roll == 6).sum()
@@ -37,32 +38,6 @@ async def degenesix(context,actionNumber:int,difficulty=0):
     result)
     await context.send(msg)
 
-@bot.command(
-    name='GegromeGetroll',
-    description="Rolls a hacked Degenesis dice pool.",
-    brief="I am the creator.",
-    aliases=['Bitch', 'bitch', 'yo'],
-    pass_context=True)
-async def degenesix(context,actionNumber:int,difficulty=0):
-    autos = 0 if actionNumber < 13 else actionNumber-12
-    actionNumber = 12 if actionNumber > 13 else actionNumber
-    roll = np.random.choice([1,5,6],actionNumber,p=[0.25,0.25,0.5])
-    successes = (roll > 3).sum()
-    successes += autos
-    triggers = (roll == 6).sum()
-    ones = (roll == 1).sum()
-
-    if difficulty:
-        result = ('*Just as planned* <:rg:552217767349321757>\n' if successes >= difficulty else "Failure!\n") if ones <= successes else '*Marauders fucking with my shit again* <:Getrellno:550654128238624768>\n'        
-        msg = "GG needs %d successes and rolls:" % (difficulty) if autos == 0 else "GG needs %d successes, already had %d cryofreezed and rolls:" % (difficulty,autos)
-    else:
-        result = '' if ones <= successes else '*Marauders fucking with my shit again* <:Getrellno:550654128238624768>\n'
-        msg = "GG had always planned to roll:" if autos == 0 else "GG acquired %d automatic successes back in 2079 and rolls:" % (autos)
-    msg+= " \n %s \n %d successes, %d triggers \n %s" % (', '.join(map(str,roll)),
-    successes,
-    triggers,
-    result)
-    await context.send(msg)
    
 
 @bot.event
