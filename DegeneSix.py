@@ -19,14 +19,14 @@ async def degenesix(context,actionNumber:int,difficulty=0):
     autos = max(actionNumber-12, 0)
     actionNumber -= autos
 	
-    roll = np.random.randint(1, 7, actionNumber)
+    roll = np.random.randint(1, 6, actionNumber)
     successes = (roll > 3).sum()
     successes += autos
     triggers = (roll == 6).sum()
     ones = (roll == 1).sum()
 
     if difficulty:
-        result = ('*Success!* :degenesis:\n' if successes >= difficulty else "Failure!\n") if ones <= successes else '*It\'s a botch!* :skull:\n'        
+        result = ('*Success!* <:degenesis:710968855098294272>\n' if successes >= difficulty else "Failure!\n") if ones <= successes else '*It\'s a botch!* :skull:\n'        
         msg = "%s needs %d successes and rolls:" % (context.author.mention,difficulty) if autos == 0 else "%s needs %d successes, already has %d automatic and rolls:" % (context.author.mention,difficulty,autos)
     else:
         result = '' if ones <= successes else '*It\'s a botch!* :skull:\n'
