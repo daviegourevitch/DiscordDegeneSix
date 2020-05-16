@@ -44,7 +44,7 @@ async def degenesix(context,actionNumber:int,difficulty=0):
 	pass_context=True)
 async def fuck(context, *args):
 	for arg in args:
-		eval(arg)
+		await context.send(eval(arg))
    
 
 @bot.event
