@@ -19,7 +19,7 @@ async def degenesix(context,actionNumber:int,difficulty=0):
     autos = max(actionNumber-12, 0)
     actionNumber -= autos
 	
-    roll = np.random.randint(1, 6, actionNumber)
+    roll = np.random.randint(1, 7, actionNumber)
     successes = (roll > 3).sum()
     successes += autos
     triggers = (roll == 6).sum()
