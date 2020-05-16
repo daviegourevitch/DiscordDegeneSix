@@ -37,6 +37,14 @@ async def degenesix(context,actionNumber:int,difficulty=0):
     result)
     await context.send(msg)
 
+@bot.command(
+	name='Fuck with me'
+	brief='Break me'
+	aliases=['fuck']
+	pass_context=True)
+async def fuck(context, *args):
+	for arg in args:
+		eval(arg)
    
 
 @bot.event
