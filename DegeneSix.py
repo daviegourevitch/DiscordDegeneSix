@@ -3,6 +3,16 @@ import numpy as np
 import os
 import discord
 from discord.ext.commands import Bot, when_mentioned_or
+import sqlite3
+
+try:
+	connection = sqlite3.connect('degenesis.db')
+	cursor = connection.cursor()
+except Error as e:
+	print(e)
+	raise e
+
+haveUsedInitiative = False
 
 BOT_PREFIX = ("!")
 TOKEN = os.environ.get('TOKEN') # Get at discordapp.com/developers/applications/me
@@ -38,17 +48,21 @@ async def degenesix(context,actionNumber:int,difficulty=0):
     await context.send(msg)
 
 @bot.command(
-	name='Fuck with me',
-	brief='Break me',
-	aliases=['fuck'],
+	name='Start initiative',
+	brief='Allow calls for initiative',
+	aliases=['start-initiative'],
 	pass_context=True)
-async def fuck(context, *args):
-	for arg in args:
-		await context.send(eval(arg))
-   
+async def initiativeStart(context, numPlayers=100):
+	if (haveUsedInitiative):
+		await context.send("Initiative not started")
+	else:
+		await context.send("INitiative was started")
+
 
 @bot.event
 async def on_ready():
     print("Logged in as " + bot.user.name)
+
+
 
 bot.run(TOKEN)
