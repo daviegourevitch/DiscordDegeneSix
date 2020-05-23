@@ -54,9 +54,10 @@ async def degenesix(context,actionNumber:int,difficulty=0):
 	pass_context=True)
 async def initiativeStart(context, numPlayers=100):
 	if (haveUsedInitiative):
-		await context.send("Initiative not started")
+		await context.send("Initiative has started before this")
 	else:
-		await context.send("INitiative was started")
+		await context.send("Initiative is about to start")
+	haveUsedInitiative = True
 
 
 @bot.event
