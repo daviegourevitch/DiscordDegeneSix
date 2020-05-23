@@ -13,11 +13,11 @@ try:
 		c.executescript(file.read())
 except Exception as e:
 	print(e)
-	print("Database problem")
+	print("Database loading problem")
 	exit()
 
 BOT_PREFIX = ("!")
-TOKEN = os.environ.get('TOKEN') # Get at discordapp.com/developers/applications/me
+TOKEN = os.environ.get('TOKEN')
 print("Current token: " + TOKEN)
 
 bot = Bot(command_prefix=when_mentioned_or(*BOT_PREFIX))
@@ -58,10 +58,13 @@ async def degenesix(context,actionNumber:int,difficulty=0):
 	pass_context=True)
 async def initiativeStart(context, initiativeName=None):
 	global c
-	c.execute("SELECT * FROM initatives")
-	asdf = c.fetchone()
-	await context.send("fetched data is")
-	await context.send(asdf)
+	try:
+		c.execute("SELECT * FROM initatives")
+		asdf = c.fetchone()
+		await context.send("fetched data is")
+		await context.send(asdf)
+	except Exception as e:
+		print(e)
 	if (initiativeName):
 		await context.send("Initiative was already active.")
 	else:
