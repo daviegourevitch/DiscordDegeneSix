@@ -59,7 +59,7 @@ async def degenesix(context,actionNumber:int,difficulty=0):
 async def initiativeStart(context, initiativeName=None):
 	global c
 	try:
-		c.execute("SELECT * FROM initatives")
+		c.execute("SELECT * FROM sqlite_master;")
 		asdf = c.fetchone()
 		await context.send("fetched data is")
 		await context.send(asdf)
@@ -70,8 +70,6 @@ async def initiativeStart(context, initiativeName=None):
 	else:
 		await context.send("Starting initiative. Use !initiative [name] [dice]")
 
-	bot.initiativeActive = True
-	bot.maxPlayers = numPlayers
 
 @bot.command(
 	name='Register for initiative',
