@@ -12,7 +12,7 @@ except Error as e:
 	print(e)
 	raise e
 
-haveUsedInitiative = False
+bot.haveUsedInitiative = False
 
 BOT_PREFIX = ("!")
 TOKEN = os.environ.get('TOKEN') # Get at discordapp.com/developers/applications/me
@@ -53,12 +53,11 @@ async def degenesix(context,actionNumber:int,difficulty=0):
 	aliases=['start-initiative'],
 	pass_context=True)
 async def initiativeStart(context, numPlayers=100):
-	global haveUsedInitiative
 	if (haveUsedInitiative):
 		await context.send("Initiative has started before this")
 	else:
 		await context.send("Initiative is about to start")
-	haveUsedInitiative = True
+	bot.haveUsedInitiative = True
 
 
 
