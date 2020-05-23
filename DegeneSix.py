@@ -53,6 +53,7 @@ async def degenesix(context,actionNumber:int,difficulty=0):
 	aliases=['start-initiative'],
 	pass_context=True)
 async def initiativeStart(context, numPlayers=100):
+	global haveUsedInitiative
 	if (haveUsedInitiative):
 		await context.send("Initiative has started before this")
 	else:
