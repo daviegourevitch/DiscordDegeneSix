@@ -5,20 +5,24 @@ import discord
 from discord.ext.commands import Bot, when_mentioned_or
 import sqlite3
 
+# setup database
 try:
 	connection = sqlite3.connect('degenesis.db')
-	cursor = connection.cursor()
-except Error as e:
+	c = connection.c()
+	with open('degenesis-schema.sql') as file:
+		c.executescript(file.read())
+except Exception as e:
 	print(e)
-	raise e
-
-bot.haveUsedInitiative = False
+	print("Database problem")
+	exit()
 
 BOT_PREFIX = ("!")
 TOKEN = os.environ.get('TOKEN') # Get at discordapp.com/developers/applications/me
 print("Current token: " + TOKEN)
 
 bot = Bot(command_prefix=when_mentioned_or(*BOT_PREFIX))
+
+bot.haveUsedInitiative = False
 
 @bot.command(
     name='Degenesis Dice Roller',
@@ -28,7 +32,7 @@ bot = Bot(command_prefix=when_mentioned_or(*BOT_PREFIX))
 async def degenesix(context,actionNumber:int,difficulty=0):
     autos = max(actionNumber-12, 0)
     actionNumber -= autos
-	
+
     roll = np.random.randint(1, 7, actionNumber)
     successes = (roll > 3).sum()
     successes += autos
@@ -36,7 +40,7 @@ async def degenesix(context,actionNumber:int,difficulty=0):
     ones = (roll == 1).sum()
 
     if difficulty:
-        result = ('*Success!* <:degenesis:710968855098294272>\n' if successes >= difficulty else "Failure!\n") if ones <= successes else '*It\'s a botch!* :skull:\n'        
+        result = ('*Success!* <:degenesis:710968855098294272>\n' if successes >= difficulty else "Failure!\n") if ones <= successes else '*It\'s a botch!* :skull:\n'
         msg = "%s needs %d successes and rolls:" % (context.author.mention,difficulty) if autos == 0 else "%s needs %d successes, already has %d automatic and rolls:" % (context.author.mention,difficulty,autos)
     else:
         result = '' if ones <= successes else '*It\'s a botch!* :skull:\n'
@@ -52,13 +56,33 @@ async def degenesix(context,actionNumber:int,difficulty=0):
 	brief='Allow calls for initiative',
 	aliases=['start-initiative'],
 	pass_context=True)
-async def initiativeStart(context, numPlayers=100):
-	if (haveUsedInitiative):
-		await context.send("Initiative has started before this")
+async def initiativeStart(context, initiativeName=None):
+	global c
+	c.execute("SELECT * FROM initatives")
+	asdf = c.fetchone()
+	await context.send("fetched data is")
+	await context.send(asdf)
+	if (initiativeName):
+		await context.send("Initiative was already active.")
 	else:
-		await context.send("Initiative is about to start")
-	bot.haveUsedInitiative = True
+		await context.send("Starting initiative. Use !initiative [name] [dice]")
 
+	bot.initiativeActive = True
+	bot.maxPlayers = numPlayers
+
+@bot.command(
+	name='Register for initiative',
+	brief='Add yourself to the initiative',
+	aliases=['initiative'],
+	pass_context=True)
+async def initiativeStart(context, playerName, numDice):
+	if (not bot.initiativeActive):
+		await context.send("Please start an initiative first")
+	else:
+		# roll dice
+		# track successes and triggers
+		# add to the initiative array
+		await context.send("Not implemented yet")
 
 
 @bot.event
