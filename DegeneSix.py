@@ -8,7 +8,7 @@ import sqlite3
 # setup database
 try:
 	connection = sqlite3.connect('degenesis.db')
-	c = connection.c()
+	c = connection.cursor()
 	with open('degenesis-schema.sql') as file:
 		c.executescript(file.read())
 except Exception as e:
