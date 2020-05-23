@@ -60,6 +60,7 @@ async def initiativeStart(context, numPlayers=100):
 	haveUsedInitiative = True
 
 
+
 @bot.event
 async def on_ready():
     print("Logged in as " + bot.user.name)
