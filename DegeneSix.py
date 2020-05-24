@@ -5,25 +5,25 @@ import discord
 from discord.ext.commands import Bot, when_mentioned_or
 import sqlite3
 
-# setup database
+# Setup database
 try:
 	connection = sqlite3.connect('degenesis.db')
-	c = connection.cursor()
+	cur = connection.cursor()
 	with open('degenesis-schema.sql') as file:
-		c.executescript(file.read())
+		cur.executescript(file.read())
 except Exception as e:
 	print(e)
 	print("Database loading problem")
 	exit()
 
+# Setup Bot
 BOT_PREFIX = ("!")
 TOKEN = os.environ.get('TOKEN')
-print("Current token: " + TOKEN)
-
 bot = Bot(command_prefix=when_mentioned_or(*BOT_PREFIX))
-
+print("Current token: " + TOKEN)
 bot.haveUsedInitiative = False
 
+# Roller
 @bot.command(
     name='Degenesis Dice Roller',
     brief="Roll a dice pool for Degenesis",
@@ -51,24 +51,25 @@ async def degenesix(context,actionNumber:int,difficulty=0):
     result)
     await context.send(msg)
 
+# Initiative stuff
 @bot.command(
 	name='Start initiative',
 	brief='Allow calls for initiative',
 	aliases=['start-initiative'],
 	pass_context=True)
 async def initiativeStart(context, initiativeName=None):
-	global c
+	global cur
 	try:
-		c.execute("SELECT * FROM sqlite_master;")
-		asdf = c.fetchone()
-		await context.send("fetched data is")
-		await context.send(asdf)
-	except Exception as e:
-		print(e)
-	if (initiativeName):
+		#There was already an entry
+		discord.
+		cur.execute("REPLACE INTO initiatives VALUES ")
 		await context.send("Initiative was already active.")
-	else:
+		#We are successful
 		await context.send("Starting initiative. Use !initiative [name] [dice]")
+	except Exception as e:
+		await context.send("Failed to start initiative")
+		print(e)
+
 
 
 @bot.command(
@@ -76,10 +77,16 @@ async def initiativeStart(context, initiativeName=None):
 	brief='Add yourself to the initiative',
 	aliases=['initiative'],
 	pass_context=True)
-async def initiativeStart(context, playerName, numDice):
-	if (not bot.initiativeActive):
+async def initiativeStart(context, *args):
+	global cur
+	#check if this channel has an active initiative
+	channelId = (context.channel,)
+	cur.execute("SELECT * FROM initiatives WHERE channel_id=?", channelId)
+	foundInitiatives = cur.fetchone()
+	if (not len(foundInitiatives)):
 		await context.send("Please start an initiative first")
 	else:
+		# Parse the command
 		# roll dice
 		# track successes and triggers
 		# add to the initiative array
