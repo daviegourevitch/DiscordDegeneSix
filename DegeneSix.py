@@ -25,7 +25,7 @@ bot.haveUsedInitiative = False
 
 # Roller
 @bot.command(
-    name='Degenesis Dice Roller',
+    name='!roll',
     brief="Roll a dice pool for Degenesis",
     aliases=['DD', 'roll','deg6'],
     pass_context=True)
@@ -53,8 +53,8 @@ async def degenesix(context,actionNumber:int,difficulty=0):
 
 # Initiative stuff
 @bot.command(
-	name='Start initiative',
-	brief='Allow calls for initiative',
+	name='!start-initiative',
+	brief='Allow calls for initiative in this channel',
 	aliases=['start-initiative'],
 	pass_context=True)
 async def initiativeStart(context, initiativeName=None):
@@ -67,7 +67,7 @@ async def initiativeStart(context, initiativeName=None):
 		await context.send("Starting initiative. Use !initiative [name] [dice]")
 	except Exception as e:
 		await context.send("Failed to start initiative")
-		print(e)
+		await context.send(e)
 
 
 
@@ -81,6 +81,7 @@ async def initiativeAdd(context, *args):
 		global cur
 		#check if this channel has an active initiative
 		channelId = (context.channel,)
+		await context.send(channelId)
 		cur.execute("SELECT * FROM initiatives WHERE channel_id=?", channelId)
 		foundInitiatives = cur.fetchone()
 		if (not len(foundInitiatives)):
@@ -92,6 +93,7 @@ async def initiativeAdd(context, *args):
 			# add to the initiative array
 			await context.send("Not implemented yet")
 	except Exception as e:
+			await context.send("An error occurred while adding you to the initiative")
 			await context.send(e)
 
 @bot.event
