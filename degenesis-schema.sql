@@ -1,4 +1,4 @@
-CREATE TABLE initiatives
+CREATE TABLE IF NOT EXISTS initiatives
 (
 	channel_id		 	TEXT,
 	round_number		INTEGER,
@@ -7,7 +7,7 @@ CREATE TABLE initiatives
 	PRIMARY KEY (channel_id)
 );
 
-CREATE TABLE player
+CREATE TABLE IF NOT EXISTS player
 (
 	channel_id	  	INTEGER,
 	discord_id			TEXT,
@@ -16,6 +16,6 @@ CREATE TABLE player
 	num_successes		INTEGER,
 	num_dice				INTEGER,
 	num_ego					INTEGER,
-	PRIMARY KEY (initiative_id, discord_id),
-	FOREIGN KEY (initiative_id) REFERENCES initiatives(initiative_id)
+	PRIMARY KEY (channel_id, discord_id),
+	FOREIGN KEY (channel_id) REFERENCES initiatives(initiative_id)
 );

@@ -61,7 +61,6 @@ async def initiativeStart(context, initiativeName=None):
 	global cur
 	try:
 		#There was already an entry
-		discord.
 		cur.execute("REPLACE INTO initiatives VALUES ")
 		await context.send("Initiative was already active.")
 		#We are successful
