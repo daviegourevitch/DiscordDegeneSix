@@ -76,21 +76,23 @@ async def initiativeStart(context, initiativeName=None):
 	brief='Add yourself to the initiative',
 	aliases=['initiative'],
 	pass_context=True)
-async def initiativeStart(context, *args):
-	global cur
-	#check if this channel has an active initiative
-	channelId = (context.channel,)
-	cur.execute("SELECT * FROM initiatives WHERE channel_id=?", channelId)
-	foundInitiatives = cur.fetchone()
-	if (not len(foundInitiatives)):
-		await context.send("Please start an initiative first")
-	else:
-		# Parse the command
-		# roll dice
-		# track successes and triggers
-		# add to the initiative array
-		await context.send("Not implemented yet")
-
+async def initiativeAdd(context, *args):
+	try:
+		global cur
+		#check if this channel has an active initiative
+		channelId = (context.channel,)
+		cur.execute("SELECT * FROM initiatives WHERE channel_id=?", channelId)
+		foundInitiatives = cur.fetchone()
+		if (not len(foundInitiatives)):
+			await context.send("Please start an initiative first")
+		else:
+			# Parse the command
+			# roll dice
+			# track successes and triggers
+			# add to the initiative array
+			await context.send("Not implemented yet")
+	except Exception as e:
+			await context.send(e)
 
 @bot.event
 async def on_ready():
