@@ -5,6 +5,8 @@ import discord
 from discord.ext.commands import Bot, when_mentioned_or
 import sqlite3
 
+from degenesis-messages import *
+
 #joke:
 import time
 
@@ -25,6 +27,29 @@ TOKEN = os.environ.get('TOKEN')
 bot = Bot(command_prefix=when_mentioned_or(*BOT_PREFIX))
 print("Current token: " + TOKEN)
 bot.haveUsedInitiative = False
+
+
+def roll(numDice):
+	autos = max(numDice-12, 0)
+	rolls = np.random.randint(1, 7, numDice-autos)
+	ones = countOnes(rolls)
+	successes = countSuccesses(rolls)
+	triggers = countTriggers(rolls)
+	return {
+		"rolls": rolls,
+		"ones": ones,
+		"successes": successes,
+		"triggers": triggers
+	}
+
+def countOnes(rolls):
+	return (rolls == 1).sum()
+
+def countSuccesses(rolls):
+	return (rolls > 3).sum()
+
+def countTriggers(rolls):
+	return (roll == 6).sum()
 
 # Roller
 @bot.command(
@@ -57,16 +82,13 @@ async def degenesix(context,actionNumber:int,difficulty=0):
 
 # Initiative stuff
 @bot.command(
-	name='!start-initiative',
+	name='start-initiative',
 	brief='Allow calls for initiative in this channel',
-	aliases=['start-initiative'],
 	pass_context=True)
 async def initiativeStart(context, label:str=None):
 	global cursor
 	try:
-		await context.send("I'm gonna just type for three seconds cause I'm a bitch")
 		async with context.typing():
-			time.sleep(3)
 			cursor.execute("REPLACE INTO initiatives(channel_id, label) VALUES(?,?)", (context.channel.id, label))
 			msg = "Initiative " + (label + " " if label else "") + "started!\nUse `!initiative [name] [dice] [ego]` (name and ego are optional)"
 		await context.send(msg)
@@ -74,17 +96,15 @@ async def initiativeStart(context, label:str=None):
 		await context.send("Failed to start initiative. Try a different channel, or email daviegourevitch@gmail.com for immediate help")
 
 @bot.command(
-	name='Register for initiative',
+	name='initiative',
 	brief='Add yourself to the initiative',
-	aliases=['initiative'],
 	pass_context=True)
 async def initiativeAdd(context, *args):
 	global cursor
 	try:
 
 		#check if this channel has an active initiative
-		channelId = (context.channel.channel_id,)
-
+		channelId = (context.channel.id)
 
 		await context.send(channelId)
 		cursor.execute("SELECT * FROM initiatives WHERE channel_id=?", channelId)
@@ -101,9 +121,24 @@ async def initiativeAdd(context, *args):
 			await context.send("An error occurred while adding you to the initiative")
 			await context.send(e)
 
+@bot.command(
+	name='context',
+	brief='Add yourself to the initiative',
+	pass_context=True)
+async def initiativeNext(context, *args):
+	global cursor
+	try:
+		print(p)
+	except Exception as e:
+			await context.send("An error occurred while moving to next initiative")
+			await context.send(e)
+
+
 @bot.event
 async def on_ready():
     print("Logged in as " + bot.user.name)
+
+
 
 
 bot.run(TOKEN)
