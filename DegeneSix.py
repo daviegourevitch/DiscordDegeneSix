@@ -58,7 +58,7 @@ async def degenesix(context,actionNumber:int,difficulty=0):
 	brief='Allow calls for initiative in this channel',
 	aliases=['start-initiative'],
 	pass_context=True)
-async def initiativeStart(context, label:string=None):
+async def initiativeStart(context, label:str=None):
 	global cursor
 	try:
 		channelID = context.message.channel;
