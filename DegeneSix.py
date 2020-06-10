@@ -71,7 +71,7 @@ async def initiativeStart(context, label:str=None):
 		cursor.execute("REPLACE INTO initiatives(channel_id, label) VALUES(?,?)", channelID, label)
 
 
-		msg = 
+		#msg = 
 
 		if (initiativeName):
 			await context.send("Initiative %s started!\nUse `!initiative [name] [dice] [ego]` or !initiative [dice] to join")
