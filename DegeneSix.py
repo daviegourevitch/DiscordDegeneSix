@@ -136,7 +136,7 @@ def parseInitiativeAdd(args):
 	if len(args) == 1:
 		tuple = ("", args[0], "")
 	if len(args) >= 3:
-		tuple += (args[0]. args[1], args[2])
+		tuple = (args[0]. args[1], args[2])
 	if (type(args[0]) is str and len(args) == 2):
 		tuple = (args[0], args[1], "")
 	else:
