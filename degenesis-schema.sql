@@ -1,4 +1,4 @@
-CREATE TABLE initiatives
+CREATE TABLE IF NOT EXISTS initiatives
 (
 	channel_id		 	TEXT,
 	round_number		INTEGER DEFAULT 1,
@@ -7,7 +7,7 @@ CREATE TABLE initiatives
 	PRIMARY KEY (channel_id)
 );
 
-CREATE TABLE player
+CREATE TABLE IF NOT EXISTS player
 (
 	channel_id	  	INTEGER,
 	discord_id			TEXT,
