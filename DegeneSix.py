@@ -5,7 +5,7 @@ import discord
 from discord.ext.commands import Bot, when_mentioned_or
 import sqlite3
 
-from degenesis-messages import *
+from degenesis_messages import *
 
 #joke:
 import time
@@ -26,7 +26,6 @@ BOT_PREFIX = ("!")
 TOKEN = os.environ.get('TOKEN')
 bot = Bot(command_prefix=when_mentioned_or(*BOT_PREFIX))
 print("Current token: " + TOKEN)
-bot.haveUsedInitiative = False
 
 
 def roll(numDice):
@@ -53,23 +52,23 @@ def countTriggers(rolls):
 
 # Roller
 @bot.command(
-    name='!roll',
-    brief="Roll a dice pool for Degenesis",
-    aliases=['DD', 'roll','deg6'],
+    name='Degene6',
+    description="Rolls a Degenesis dice pool.",
+    brief="Sacrifice everything",
+    aliases=['D6', '6pool','roll','dee6'],
     pass_context=True)
 async def degenesix(context,actionNumber:int,difficulty=0):
-
-    autos = max(actionNumber-12, 0)
-    actionNumber -= autos
-
-    roll = np.random.randint(1, 7, actionNumber)
+    autos = 0 if actionNumber < 13 else actionNumber-12
+    actionNumber = 12 if actionNumber > 13 else actionNumber
+    roll = np.random.choice([1,2,3,4,5,6],actionNumber)
     successes = (roll > 3).sum()
     successes += autos
     triggers = (roll == 6).sum()
     ones = (roll == 1).sum()
+    degEmoji = get(context.message.guild.emojis, name="degenesis")
 
     if difficulty:
-        result = ('*Success!* <:degenesis:710968855098294272>\n' if successes >= difficulty else "Failure!\n") if ones <= successes else '*It\'s a botch!* :skull:\n'
+        result = (f'*Success!* {degEmoji}\n' if successes >= difficulty else "Failure!\n") if ones <= successes else '*It\'s a botch!* :skull:\n'
         msg = "%s needs %d successes and rolls:" % (context.author.mention,difficulty) if autos == 0 else "%s needs %d successes, already has %d automatic and rolls:" % (context.author.mention,difficulty,autos)
     else:
         result = '' if ones <= successes else '*It\'s a botch!* :skull:\n'
@@ -89,7 +88,9 @@ async def initiativeStart(context, label:str=None):
 	global cursor
 	try:
 		async with context.typing():
-			cursor.execute("REPLACE INTO initiatives(channel_id, label) VALUES(?,?)", (context.channel.id, label))
+			id = context.channel.id
+			cursor.execute("REPLACE INTO initiatives(channel_id, label) VALUES(?,?)", (id, label))
+			cursor.execute("DELETE * FROM players WHERE channel_id=?", (id))
 			msg = "Initiative " + (label + " " if label else "") + "started!\nUse `!initiative [name] [dice] [ego]` (name and ego are optional)"
 		await context.send(msg)
 	except Exception as e:
@@ -104,13 +105,13 @@ async def initiativeAdd(context, *args):
 	try:
 
 		#check if this channel has an active initiative
-		channelId = (context.channel.id)
+		inputs = parseInitiativeAdd(args)
 
-		await context.send(channelId)
-		cursor.execute("SELECT * FROM initiatives WHERE channel_id=?", channelId)
-		foundInitiatives = cursor.fetchone()
-		if (not len(foundInitiatives)):
-			await context.send("Please start an initiative first")
+
+		cursor.execute("SELECT label, is_closed FROM initiatives WHERE channel_id=?", (channelId,))
+		foundInitiative = cursor.fetchone()
+		if (not len(label) || foundInitiative[1] != 0):
+			await context.send("There is no active initiative in this channel.")
 		else:
 			# Parse the command
 			# roll dice
@@ -120,6 +121,22 @@ async def initiativeAdd(context, *args):
 	except Exception as e:
 			await context.send("An error occurred while adding you to the initiative")
 			await context.send(e)
+
+def parseInitiativeAdd(args):
+	if len(args) == 0:
+		raise BadArgument()
+		"""
+	if len(args) >= 3:
+		asdf
+	elif len(args) >= 2:
+		asdf
+	elif len(args) >= 1:
+		asdf
+	else:
+		"""
+
+
+
 
 @bot.command(
 	name='context',

@@ -4,10 +4,11 @@ CREATE TABLE IF NOT EXISTS initiatives
 	round_number		INTEGER DEFAULT 1,
 	cur_initiative 	INTEGER,
 	label						TEXT,
+	is_closed				INTEGER DEFAULT 0,
 	PRIMARY KEY (channel_id)
 );
 
-CREATE TABLE IF NOT EXISTS player
+CREATE TABLE IF NOT EXISTS players
 (
 	channel_id	  	INTEGER,
 	discord_id			TEXT,
