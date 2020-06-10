@@ -74,7 +74,7 @@ async def initiativeStart(context, label:str=None):
 			await context.send("")
 	except Exception as e:
 		await context.send("Failed to start initiative")
-		#await context.send(e)
+		await context.send(e)
 
 @bot.command(
 	name='Register for initiative',
