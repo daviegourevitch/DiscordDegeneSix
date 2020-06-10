@@ -64,11 +64,11 @@ async def degenesix(context,actionNumber:int,difficulty=0):
 async def initiativeStart(context, label:str=None):
 	global cursor
 	try:
+		await context.send("I'm gonna just type for three seconds cause I'm a bitch")
 		async with context.typing():
-			await context.send("I'm gonna just type for three seconds to piss you off")
 			time.sleep(3)
 			cursor.execute("REPLACE INTO initiatives(channel_id, label) VALUES(?,?)", (context.channel.id, label))
-			msg = "Initiative " + (label + " " if label else "") + "started!\nUse `!initiative [name] [dice] [ego]` where `name` and `ego` are optional"
+			msg = "Initiative " + (label + " " if label else "") + "started!\nUse `!initiative [name] [dice] [ego]` (name and ego are optional)"
 			await context.send(msg)
 	except Exception as e:
 		await context.send("Failed to start initiative")
@@ -80,8 +80,9 @@ async def initiativeStart(context, label:str=None):
 	aliases=['initiative'],
 	pass_context=True)
 async def initiativeAdd(context, *args):
+	global cursor
 	try:
-		global cursor
+
 		#check if this channel has an active initiative
 		channelId = (context.channel.channel_id,)
 		await context.send(channelId)
