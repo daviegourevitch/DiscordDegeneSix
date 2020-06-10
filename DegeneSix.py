@@ -5,7 +5,7 @@ import discord
 from discord.ext.commands import Bot, when_mentioned_or
 import sqlite3
 
-from degenesis_messages import *
+#from degenesis_messages import *
 
 #joke:
 import time
