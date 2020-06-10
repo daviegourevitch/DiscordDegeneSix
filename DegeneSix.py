@@ -136,13 +136,13 @@ def parseInitiativeAdd(args):
 	if len(args) == 0:
 		raise BadArgument() #todo
 	if len(args) == 1:
-		tuple = ("", args[0], "")
+		tuple = (None, args[0], None)
 	if len(args) >= 3:
 		tuple = (args[0], args[1], args[2])
-	if (type(args[0]) is str and len(args) == 2):
-		tuple = (args[0], args[1], "")
+	if (type(args[0]) is str):
+		tuple = (args[0], args[1], None)
 	else:
-		tuple = ("", args[0], args[1])
+		tuple = (None, args[0], args[1])
 	return tuple
 
 def checkDuplicate(characters, name):
