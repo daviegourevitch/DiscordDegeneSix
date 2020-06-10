@@ -110,7 +110,7 @@ async def initiativeAdd(context, *args):
 
 		cursor.execute("SELECT label, is_closed FROM initiatives WHERE channel_id=?", (channelId,))
 		foundInitiative = cursor.fetchone()
-		if (not len(label) || foundInitiative[1] != 0):
+		if (not len(foundInitiative) || foundInitiative[1] != 0):
 			await context.send("There is no active initiative in this channel.")
 		else:
 			# Parse the command
