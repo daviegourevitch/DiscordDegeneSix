@@ -8,12 +8,12 @@ import sqlite3
 # Setup database
 try:
 	connection = sqlite3.connect('degenesis.db')
-	cur = connection.cursor()
+	cursor = connection.cursor()
 	with open('degenesis-schema.sql') as file:
-		cur.executescript(file.read())
+		cursor.executescript(file.read())
 except Exception as e:
 	print(e)
-	print("Database loading problem")
+	print("Database error")
 	exit()
 
 # Setup Bot
@@ -30,6 +30,7 @@ bot.haveUsedInitiative = False
     aliases=['DD', 'roll','deg6'],
     pass_context=True)
 async def degenesix(context,actionNumber:int,difficulty=0):
+
     autos = max(actionNumber-12, 0)
     actionNumber -= autos
 
@@ -57,19 +58,21 @@ async def degenesix(context,actionNumber:int,difficulty=0):
 	brief='Allow calls for initiative in this channel',
 	aliases=['start-initiative'],
 	pass_context=True)
-async def initiativeStart(context, initiativeName=None):
-	global cur
+async def initiativeStart(context, label:string=None):
+	global cursor
 	try:
-		#There was already an entry
-		cur.execute("REPLACE INTO initiatives VALUES ")
-		await context.send("Initiative was already active.")
-		#We are successful
-		await context.send("Starting initiative. Use !initiative [name] [dice]")
+		channelID = context.message.channel;
+		### TEST
+		await context.send("Initiative %sstarted! Use `!initiative [name] [dice] [ego]` to join", label)
+		### TEST END
+		cursor.execute("REPLACE INTO initiatives(channel_id, label) VALUES(?,?)", channelID, label)
+		if (initiativeName):
+			await context.send("Initiative %s started! Use `!initiative [name] [dice] [ego]` to join")
+		else:
+			await context.send("")
 	except Exception as e:
 		await context.send("Failed to start initiative")
-		await context.send(e)
-
-
+		#await context.send(e)
 
 @bot.command(
 	name='Register for initiative',
@@ -78,12 +81,12 @@ async def initiativeStart(context, initiativeName=None):
 	pass_context=True)
 async def initiativeAdd(context, *args):
 	try:
-		global cur
+		global cursor
 		#check if this channel has an active initiative
-		channelId = (context.channel,)
+		channelId = (context.channel.channel_id,)
 		await context.send(channelId)
-		cur.execute("SELECT * FROM initiatives WHERE channel_id=?", channelId)
-		foundInitiatives = cur.fetchone()
+		cursor.execute("SELECT * FROM initiatives WHERE channel_id=?", channelId)
+		foundInitiatives = cursor.fetchone()
 		if (not len(foundInitiatives)):
 			await context.send("Please start an initiative first")
 		else:
