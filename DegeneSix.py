@@ -61,9 +61,11 @@ async def degenesix(context,actionNumber:int,difficulty=0):
 async def initiativeStart(context, label:str=None):
 	global cursor
 	try:
-		channelID = context.message.channel;
+		#channelID = context.message.channel;
 		### TEST
 		await context.send("Initiative %sstarted! Use `!initiative [name] [dice] [ego]` to join", label)
+		await context.send(context)
+		await context.send(channelID)
 		### TEST END
 		cursor.execute("REPLACE INTO initiatives(channel_id, label) VALUES(?,?)", channelID, label)
 		if (initiativeName):
