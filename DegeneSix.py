@@ -95,6 +95,7 @@ async def initiativeStart(context, label:str=None):
 		await context.send(msg)
 	except Exception as e:
 		await context.send("Failed to start initiative. Try a different channel, or email daviegourevitch@gmail.com for immediate help")
+		await context.send(e)
 
 @bot.command(
 	name='initiative',
