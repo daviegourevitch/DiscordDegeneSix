@@ -88,6 +88,7 @@ async def initiativeStart(context, label:str=None):
 	global cursor
 	try:
 		async with context.typing():
+			#TODO - check and send if we deleted an initiative
 			id = context.channel.id
 			cursor.execute("REPLACE INTO initiatives(channel_id, label) VALUES(?,?)", (id, label))
 			cursor.execute("DELETE FROM characters WHERE channel_id=?", (id,))
@@ -109,7 +110,7 @@ async def initiativeAdd(context, *args):
 			name = inputs[0]
 			dice = inputs[1]
 			ego = inputs[2]
-			await context.send("name " + name )
+			await context.send("name " + name + " dice " + dice + " ego " + ego)
 			# Check that the initiative exists and is open
 			cursor.execute("SELECT label, is_closed FROM initiatives WHERE channel_id=?", (context.channel.id,))
 			initiative = cursor.fetchone()
