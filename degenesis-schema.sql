@@ -1,9 +1,9 @@
 CREATE TABLE IF NOT EXISTS initiatives
 (
 	channel_id		 	TEXT,
-	round_number		INTEGER,
+	round_number		INTEGER DEFAULT 1,
 	cur_initiative 	INTEGER,
-	initiative_name TEXT,
+	label						TEXT,
 	PRIMARY KEY (channel_id)
 );
 
