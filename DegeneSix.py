@@ -110,7 +110,8 @@ async def initiativeAdd(context, *args):
 			name = inputs[0]
 			dice = inputs[1]
 			ego = inputs[2]
-			await context.send("name " + name + " dice " + dice + " ego " + ego)
+			msg = "name " + name + " dice " + dice + " ego " + ego
+			await context.send(msg)
 			# Check that the initiative exists and is open
 			cursor.execute("SELECT label, is_closed FROM initiatives WHERE channel_id=?", (context.channel.id,))
 			initiative = cursor.fetchone()
