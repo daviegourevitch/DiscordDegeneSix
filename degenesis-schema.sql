@@ -8,11 +8,11 @@ CREATE TABLE IF NOT EXISTS initiatives
 	PRIMARY KEY (channel_id)
 );
 
-CREATE TABLE IF NOT EXISTS players
+CREATE TABLE IF NOT EXISTS characters
 (
 	channel_id	  	INTEGER,
 	discord_id			TEXT,
-	player_name 		TEXT,
+	name				 		TEXT,
 	num_triggers 		INTEGER,
 	num_successes		INTEGER,
 	num_dice				INTEGER,

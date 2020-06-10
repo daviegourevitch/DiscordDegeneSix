@@ -90,7 +90,7 @@ async def initiativeStart(context, label:str=None):
 		async with context.typing():
 			id = context.channel.id
 			cursor.execute("REPLACE INTO initiatives(channel_id, label) VALUES(?,?)", (id, label))
-			cursor.execute("DELETE * FROM players WHERE channel_id=?", (id))
+			cursor.execute("DELETE * FROM characters WHERE channel_id=?", (id))
 			msg = "Initiative " + (label + " " if label else "") + "started!\nUse `!initiative [name] [dice] [ego]` (name and ego are optional)"
 		await context.send(msg)
 	except Exception as e:
@@ -103,21 +103,28 @@ async def initiativeStart(context, label:str=None):
 async def initiativeAdd(context, *args):
 	global cursor
 	try:
-
-		#check if this channel has an active initiative
-		inputs = parseInitiativeAdd(args)
-
-
-		cursor.execute("SELECT label, is_closed FROM initiatives WHERE channel_id=?", (channelId,))
-		foundInitiative = cursor.fetchone()
-		if (not len(foundInitiative) || foundInitiative[1] != 0):
-			await context.send("There is no active initiative in this channel.")
-		else:
-			# Parse the command
-			# roll dice
-			# track successes and triggers
-			# add to the initiative array
-			await context.send("Not implemented yet")
+		async with context.typing():
+			inputs = parseInitiativeAdd(args)
+			name = inputs[0]
+			dice = inputs[1]
+			ego = inputs[2]
+			# Check that the initiative exists and is open
+			cursor.execute("SELECT label, is_closed FROM initiatives WHERE channel_id=?", (context.channel.id,))
+			initiative = cursor.fetchone()
+			if (not initiative):
+				return context.send("There is no active initiative in this channel.")
+			if (initiative[1] != 0):
+				return context.send("The active initiative in this channel is not accepting players.")
+			# Check if the player is already in that initiative
+			cursor.execute("SELECT discord_id, name FROM characters WHERE channel_id=?", (context.author.id,))
+			characters = cursor.fetchall()
+			if (checkDuplicate(characters, name)):
+				msg = "" + name if name else context.author.display_name + " was already in the initiative. Overwriting..."
+				await context.send(msg)
+			# Add them and send message
+			cursor.execute("REPLACE INTO characters(channel_id, discord_id, name, num_dice, num_ego) VALUES(?,?,?,?,?)", (context.channel.id, context.author.id, name, dice, ego))
+			msg = "" + name if name else context.author.mention + " was successfully added to the initiative"
+		await context.send(msg)
 	except Exception as e:
 			await context.send("An error occurred while adding you to the initiative")
 			await context.send(e)
@@ -125,17 +132,23 @@ async def initiativeAdd(context, *args):
 def parseInitiativeAdd(args):
 	if len(args) == 0:
 		raise BadArgument()
-		"""
+	if len(args) == 1:
+		tuple = ("", args[0], "")
 	if len(args) >= 3:
-		asdf
-	elif len(args) >= 2:
-		asdf
-	elif len(args) >= 1:
-		asdf
+		tuple += (args[0]. args[1], args[2])
+	if (type(args[0]) is str and len(args) == 2):
+		tuple = (args[0], args[1], "")
 	else:
-		"""
+		tuple = ("", args[0], args[1])
+	return tuple
 
-
+def checkDuplicate(characters, name):
+	if (len(characters) == 0 and not name):
+		return False
+	for character in characters:
+		if character[1] == name:
+			return True
+	return False
 
 
 @bot.command(
