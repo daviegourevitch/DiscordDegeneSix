@@ -69,10 +69,9 @@ async def initiativeStart(context, label:str=None):
 			time.sleep(3)
 			cursor.execute("REPLACE INTO initiatives(channel_id, label) VALUES(?,?)", (context.channel.id, label))
 			msg = "Initiative " + (label + " " if label else "") + "started!\nUse `!initiative [name] [dice] [ego]` (name and ego are optional)"
-			await context.send(msg)
+		await context.send(msg)
 	except Exception as e:
-		await context.send("Failed to start initiative")
-		await context.send(e)
+		await context.send("Failed to start initiative. Try a different channel, or email daviegourevitch@gmail.com for immediate help")
 
 @bot.command(
 	name='Register for initiative',
@@ -85,6 +84,8 @@ async def initiativeAdd(context, *args):
 
 		#check if this channel has an active initiative
 		channelId = (context.channel.channel_id,)
+
+
 		await context.send(channelId)
 		cursor.execute("SELECT * FROM initiatives WHERE channel_id=?", channelId)
 		foundInitiatives = cursor.fetchone()
