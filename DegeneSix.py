@@ -90,7 +90,7 @@ async def initiativeStart(context, label:str=None):
 		async with context.typing():
 			id = context.channel.id
 			cursor.execute("REPLACE INTO initiatives(channel_id, label) VALUES(?,?)", (id, label))
-			cursor.execute("DELETE * FROM characters WHERE channel_id=?", (id))
+			cursor.execute("DELETE FROM characters WHERE channel_id=?", (id,))
 			msg = "Initiative " + (label + " " if label else "") + "started!\nUse `!initiative [name] [dice] [ego]` (name and ego are optional)"
 		await context.send(msg)
 	except Exception as e:
