@@ -5,6 +5,9 @@ import discord
 from discord.ext.commands import Bot, when_mentioned_or
 import sqlite3
 
+#joke:
+import time
+
 # Setup database
 try:
 	connection = sqlite3.connect('degenesis.db')
@@ -62,7 +65,9 @@ async def initiativeStart(context, label:str=None):
 	global cursor
 	try:
 		async with context.typing():
-			cursor.execute("REPLACE INTO initiatives(channel_id, label) VALUES(?,?)", context.channel.id, label)
+			await context.send("I'm gonna just type for three seconds to piss you off")
+			time.sleep(3)
+			cursor.execute("REPLACE INTO initiatives(channel_id, label) VALUES(?,?)", (context.channel.id, label))
 			msg = "Initiative " + (label + " " if label else "") + "started!\nUse `!initiative [name] [dice] [ego]` where `name` and `ego` are optional"
 			await context.send(msg)
 	except Exception as e:
