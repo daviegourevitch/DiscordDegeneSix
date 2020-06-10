@@ -109,6 +109,7 @@ async def initiativeAdd(context, *args):
 			name = inputs[0]
 			dice = inputs[1]
 			ego = inputs[2]
+			await context.send("name " + name )
 			# Check that the initiative exists and is open
 			cursor.execute("SELECT label, is_closed FROM initiatives WHERE channel_id=?", (context.channel.id,))
 			initiative = cursor.fetchone()
@@ -132,11 +133,11 @@ async def initiativeAdd(context, *args):
 
 def parseInitiativeAdd(args):
 	if len(args) == 0:
-		raise BadArgument()
+		raise BadArgument() #todo
 	if len(args) == 1:
 		tuple = ("", args[0], "")
 	if len(args) >= 3:
-		tuple = (args[0]. args[1], args[2])
+		tuple = (args[0], args[1], args[2])
 	if (type(args[0]) is str and len(args) == 2):
 		tuple = (args[0], args[1], "")
 	else:
