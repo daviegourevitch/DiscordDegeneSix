@@ -106,7 +106,7 @@ async def initiativeAdd(context, *args):
 	global cursor
 	try:
 		async with context.typing():
-			if (!validInitiativeArgs(args)) {
+			if (not validInitiativeArgs(args)) {
 				await context.send("Invalid input. Use `!help initiative` for more info.")
 			}
 			inputs = parseInitiativeAdd(args)
