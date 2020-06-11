@@ -106,8 +106,10 @@ async def initiativeAdd(context, *args):
 	global cursor
 	try:
 		async with context.typing():
+			await context.send(args)
 			if (not validInitiativeArgs(args)):
 				await context.send("Invalid input. Use `!help initiative` for more info.")
+				return
 			inputs = parseInitiativeAdd(args)
 			name = inputs[0]
 			dice = inputs[1]
