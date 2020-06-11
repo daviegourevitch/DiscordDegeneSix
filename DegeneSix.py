@@ -106,11 +106,14 @@ async def initiativeAdd(context, *args):
 	global cursor
 	try:
 		async with context.typing():
+			if (!validInitiativeArgs(args)) {
+				await context.send("Invalid input. Use `!help initiative` for more info.")
+			}
 			inputs = parseInitiativeAdd(args)
 			name = inputs[0]
 			dice = inputs[1]
 			ego = inputs[2]
-			msg = "name " + (name if name else "") + " dice " + (dice if dice else "") + " ego " + (ego if ego else "")
+			msg = "name " + (name if name else "") + " dice " + (dice if dice else "") + " ego " + (ego if ego else "") + " args " + len(args)
 			await context.send(msg)
 			# Check that the initiative exists and is open
 			cursor.execute("SELECT label, is_closed FROM initiatives WHERE channel_id=?", (context.channel.id,))
@@ -135,9 +138,20 @@ async def initiativeAdd(context, *args):
 			await context.send("An error occurred while adding you to the initiative")
 			await context.send(e)
 
+def validInitiativeArgs(args):
+	if (len(args) == 1 and type(args[0]) is int):
+		return true
+	if (len(args) == 2):
+		if(type(args[0]) is str and type(args[1]) is int):
+			return True
+		if(type(args[0]) is int and type(args[1]) is int):
+			return True
+	if (len(args) >= 3)
+		if(type(args[0]) is str and type(args[1]) is int and type(args[2]) is int):
+			return True
+	return False
+
 def parseInitiativeAdd(args):
-	if len(args) == 0:
-		raise BadArgument() #todo
 	if len(args) == 1:
 		tuple = (None, args[0], None)
 	if len(args) >= 3:
