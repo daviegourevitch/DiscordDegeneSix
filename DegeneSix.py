@@ -116,9 +116,11 @@ async def initiativeAdd(context, *args):
 			cursor.execute("SELECT label, is_closed FROM initiatives WHERE channel_id=?", (context.channel.id,))
 			initiative = cursor.fetchone()
 			if (not initiative):
-				return context.send("There is no active initiative in this channel.")
+				await context.send("There is no active initiative in this channel.")
+				return
 			if (initiative[1] != 0):
-				return context.send("The active initiative in this channel is not accepting players.")
+				await context.send("The active initiative in this channel is not accepting players.")
+				return
 			# Check if the player is already in that initiative
 			cursor.execute("SELECT discord_id, name FROM characters WHERE channel_id=?", (context.author.id,))
 			characters = cursor.fetchall()
