@@ -151,7 +151,7 @@ def parseInitiativeAdd(args):
 				return ("NULL", dice, ego)
 			except:
 				dice = int(args[1])
-				return (args[0], args[1], "NULL")
+				return (args[0], dice, "NULL")
 		if (len(args) >= 3):
 			dice = int(args[1])
 			ego = int(args[2])

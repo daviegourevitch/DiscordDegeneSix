@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS initiatives
 
 CREATE TABLE IF NOT EXISTS characters
 (
-	channel_id	  	INTEGER,
+	channel_id	  	TEXT,
 	discord_id			TEXT,
 	name				 		TEXT,
 	num_triggers 		INTEGER,
