@@ -111,10 +111,10 @@ async def initiativeAdd(context, *args):
 			if (not parsedArgs):
 				await context.send("Invalid input. Use `!help initiative` for more info.")
 				return
-			inputs = parseInitiativeAdd(args)
-			name = inputs[0]
-			dice = inputs[1]
-			ego = inputs[2]
+			parsedArgs = parseInitiativeAdd(args)
+			name = parsedArgs[0]
+			dice = parsedArgs[1]
+			ego = parsedArgs[2]
 			msg = "name " + (name if name else "") + " dice " + (dice if dice else "") + " ego " + (ego if ego else "") + " args " + len(args)
 			await context.send(msg)
 			# Check that the initiative exists and is open
@@ -143,15 +143,15 @@ async def initiativeAdd(context, *args):
 def parseInitiativeAdd(args):
 	try:
 		if (len(args) == 1 and type(int(args[0])) is int):
-			return (None, int(args[0]), None)
+			return ("NULL", int(args[0]), "NULL")
 		if (len(args) == 2):
 			try:
 				dice = int(args[0])
 				ego = int(args[1])
-				return (None, dice, ego)
+				return ("NULL", dice, ego)
 			except:
 				dice = int(args[1])
-				return (args[0], args[1])
+				return (args[0], args[1], "NULL")
 		if (len(args) >= 3):
 			dice = int(args[1])
 			ego = int(args[2])
