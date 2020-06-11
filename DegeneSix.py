@@ -115,7 +115,7 @@ async def initiativeAdd(context, *args):
 			name = parsedArgs[0]
 			dice = parsedArgs[1]
 			ego = parsedArgs[2]
-			msg = "name " + (name if name else "") + " dice " + (dice if dice else "") + " ego " + (ego if ego else "") + " args " + len(args)
+			msg = "name " + (name if name else "") + " dice " + (str(dice) if dice else "") + " ego " + (str(ego) if ego else "") + " args " + len(args)
 			await context.send(msg)
 			# Check that the initiative exists and is open
 			cursor.execute("SELECT label, is_closed FROM initiatives WHERE channel_id=?", (context.channel.id,))
@@ -134,7 +134,7 @@ async def initiativeAdd(context, *args):
 				await context.send(msg)
 			# Add them and send message
 			cursor.execute("REPLACE INTO characters(channel_id, discord_id, name, num_dice, num_ego) VALUES(?,?,?,?,?)", (context.channel.id, context.author.id, name, dice, ego))
-			msg = "" + name if name else context.author.mention + " was successfully added to the initiative"
+			msg = "" + name if name else context.author.mention + " was successfully added to the initiative with " + (dice + " dice " if dice else "") + ("and" if dice and ego else "") + (ego + " ego" if ego else "")
 		await context.send(msg)
 	except Exception as e:
 			await context.send("An error occurred while adding you to the initiative")
