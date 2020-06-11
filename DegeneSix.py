@@ -145,7 +145,7 @@ def validInitiativeArgs(args):
 			return True
 		if(type(args[0]) is int and type(args[1]) is int):
 			return True
-	if (len(args) >= 3)
+	if (len(args) >= 3):
 		if(type(args[0]) is str and type(args[1]) is int and type(args[2]) is int):
 			return True
 	return False
