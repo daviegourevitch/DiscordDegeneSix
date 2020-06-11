@@ -140,17 +140,16 @@ async def initiativeAdd(context, *args):
 			await context.send(e)
 
 def validInitiativeArgs(args):
-	if (len(args) == 1 and type(args[0]) is int):
-		return true
-	if (len(args) == 2):
-		if(type(args[0]) is str and type(args[1]) is int):
+	try:
+		if (len(args) == 1 and type(int(args[0])) is int):
 			return True
-		if(type(args[0]) is int and type(args[1]) is int):
+		if (len(args) == 2 and type(int(args[1]))):
 			return True
-	if (len(args) >= 3):
-		if(type(args[0]) is str and type(args[1]) is int and type(args[2]) is int):
+		if (len(args) >= 3 and type(int(args[1])) is int and type(int(args[2])) is int):
 			return True
-	return False
+		return False
+	except:
+		return False
 
 def parseInitiativeAdd(args):
 	if len(args) == 1:
