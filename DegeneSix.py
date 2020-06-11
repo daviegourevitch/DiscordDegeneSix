@@ -108,7 +108,6 @@ async def initiativeAdd(context, *args):
 		async with context.typing():
 			if (not validInitiativeArgs(args)):
 				await context.send("Invalid input. Use `!help initiative` for more info.")
-			}
 			inputs = parseInitiativeAdd(args)
 			name = inputs[0]
 			dice = inputs[1]
