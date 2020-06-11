@@ -107,7 +107,8 @@ async def initiativeAdd(context, *args):
 	try:
 		async with context.typing():
 			await context.send(args)
-			if (not validInitiativeArgs(args)):
+			parsedArgs = parseInitiativeAdd(args)
+			if (not parsedArgs):
 				await context.send("Invalid input. Use `!help initiative` for more info.")
 				return
 			inputs = parseInitiativeAdd(args)
@@ -139,28 +140,25 @@ async def initiativeAdd(context, *args):
 			await context.send("An error occurred while adding you to the initiative")
 			await context.send(e)
 
-def validInitiativeArgs(args):
+def parseInitiativeAdd(args):
 	try:
 		if (len(args) == 1 and type(int(args[0])) is int):
-			return True
-		if (len(args) == 2 and type(int(args[1]))):
-			return True
-		if (len(args) >= 3 and type(int(args[1])) is int and type(int(args[2])) is int):
-			return True
-		return False
+			return (None, int(args[0]), None)
+		if (len(args) == 2):
+			try:
+				dice = int(args[0])
+				ego = int(args[1])
+				return (None, dice, ego)
+			except:
+				dice = int(args[1])
+				return (args[0], args[1])
+		if (len(args) >= 3):
+			dice = int(args[1])
+			ego = int(args[2])
+			return (args[0], dice, ego)
+		return None
 	except:
-		return False
-
-def parseInitiativeAdd(args):
-	if len(args) == 1:
-		tuple = (None, args[0], None)
-	if len(args) >= 3:
-		tuple = (args[0], args[1], args[2])
-	if (type(args[0]) is str):
-		tuple = (args[0], args[1], None)
-	else:
-		tuple = (None, args[0], args[1])
-	return tuple
+		return None
 
 def checkDuplicate(characters, name):
 	if (len(characters) == 0 and not name):
