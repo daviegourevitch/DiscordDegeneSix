@@ -85,14 +85,14 @@ async def degenesix(context,actionNumber:int,difficulty=0):
 	brief='Allow calls for initiative in this channel',
 	pass_context=True)
 async def initiativeStart(context, label:str=None):
-	global cursor
+	global cursor, connection
 	try:
 		async with context.typing():
 			#TODO - check and send if we deleted an initiative
-			id = context.channel.id
-			cursor.execute("REPLACE INTO initiatives(channel_id, label) VALUES(?,?)", (id, label))
+			cursor.execute("REPLACE INTO initiatives(channel_id, label) VALUES(?,?)", (context.channel.id, label))
 			cursor.execute("DELETE FROM characters WHERE channel_id=?", (id,))
-			msg = "Initiative " + (label + " " if label else "") + "started!\nUse `!initiative [name] [dice] [ego]` (name and ego are optional)"
+			connection.commit()
+			msg = "Initiative " + (label + " " if label else "") + "started!\nUse `!initiative [name] [dice] [ego]` (name and ego are optional) to join\nType `!next` to start!"
 		await context.send(msg)
 	except Exception as e:
 		await context.send("Failed to start initiative. Try a different channel, or email daviegourevitch@gmail.com for immediate help")
@@ -101,40 +101,38 @@ async def initiativeStart(context, label:str=None):
 @bot.command(
 	name='initiative',
 	brief='Add yourself to the initiative',
+	description='Use `!initiative [name] [dice] [ego]` to add yourself to this channel\'s initiative (name and ego are optional)',
 	pass_context=True)
 async def initiativeAdd(context, *args):
-	global cursor
+	global cursor, connection
+	msg = ""
 	try:
-		async with context.typing():
-			await context.send(args)
-			parsedArgs = parseInitiativeAdd(args)
-			if (not parsedArgs):
-				await context.send("Invalid input. Use `!help initiative` for more info.")
-				return
-			parsedArgs = parseInitiativeAdd(args)
-			name = parsedArgs[0]
-			dice = parsedArgs[1]
-			ego = parsedArgs[2]
-			msg = "name " + (name if name else "") + " dice " + (str(dice) if dice else "") + " ego " + (str(ego) if ego else "") + " args " + len(args)
-			await context.send(msg)
-			# Check that the initiative exists and is open
-			cursor.execute("SELECT label, is_closed FROM initiatives WHERE channel_id=?", (context.channel.id,))
-			initiative = cursor.fetchone()
-			if (not initiative):
-				await context.send("There is no active initiative in this channel.")
-				return
-			if (initiative[1] != 0):
-				await context.send("The active initiative in this channel is not accepting players.")
-				return
-			# Check if the player is already in that initiative
-			cursor.execute("SELECT discord_id, name FROM characters WHERE channel_id=?", (context.author.id,))
-			characters = cursor.fetchall()
-			if (checkDuplicate(characters, name)):
-				msg = "" + name if name else context.author.display_name + " was already in the initiative. Overwriting..."
-				await context.send(msg)
-			# Add them and send message
-			cursor.execute("REPLACE INTO characters(channel_id, discord_id, name, num_dice, num_ego) VALUES(?,?,?,?,?)", (context.channel.id, context.author.id, name, dice, ego))
-			msg = "" + name if name else context.author.mention + " was successfully added to the initiative with " + (dice + " dice " if dice else "") + ("and" if dice and ego else "") + (ego + " ego" if ego else "")
+		await context.trigger_typing()
+		parsedArgs = parseInitiativeAdd(args)
+		if (not parsedArgs):
+			await context.send("Invalid input. Use `!help initiative` for more info.")
+			return
+		name = parsedArgs[0]
+		dice = parsedArgs[1]
+		ego = parsedArgs[2]
+		# Check that the initiative exists and is open
+		cursor.execute("SELECT label, cur_initiative FROM initiatives WHERE channel_id=?", (context.channel.id,))
+		initiative = cursor.fetchone()
+		if (not initiative):
+			await context.send("There is no active initiative in this channel.")
+			return
+		await context.send(initiative)
+		if (initiative[1] >= 0):
+			msg += "The initiative in this channel has already started. You will join at the beginning of the next round\n"
+		# Check if the player is already in that initiative
+		cursor.execute("SELECT discord_id, name FROM characters WHERE channel_id=? AND mention=?", (context.channel.id, context.author.mention))
+		characters = cursor.fetchall()
+		if (checkDuplicate(characters, name)):
+			msg += ("" + name if name else context.author.display_name) + " was already in the initiative. Overwriting...\n"
+		# Add them and send message
+		cursor.execute("REPLACE INTO characters(channel_id, mention, name, num_dice, num_ego) VALUES(?,?,?,?,?)", (context.channel.id, context.author.mention, name, dice, ego))
+		connection.commit()
+		msg += "Player " + (name if name else context.author.mention) + " was added to the initiative with " + str(dice) + " dice" + ((" and " + str(ego) + " ego") if ego else "")
 		await context.send(msg)
 	except Exception as e:
 			await context.send("An error occurred while adding you to the initiative")
@@ -143,26 +141,28 @@ async def initiativeAdd(context, *args):
 def parseInitiativeAdd(args):
 	try:
 		if (len(args) == 1 and type(int(args[0])) is int):
-			return ("NULL", int(args[0]), "NULL")
+			return [None, int(args[0]), None]
 		if (len(args) == 2):
 			try:
 				dice = int(args[0])
 				ego = int(args[1])
-				return ("NULL", dice, ego)
+				return [None, dice, ego]
 			except:
 				dice = int(args[1])
-				return (args[0], dice, "NULL")
+				return [args[0], dice, None]
 		if (len(args) >= 3):
 			dice = int(args[1])
 			ego = int(args[2])
-			return (args[0], dice, ego)
+			return [args[0], dice, ego]
 		return None
 	except:
 		return None
 
 def checkDuplicate(characters, name):
-	if (len(characters) == 0 and not name):
+	if (len(characters) == 0):
 		return False
+	if (len(characters) > 0 and len(name) == 0):
+		return True
 	for character in characters:
 		if character[1] == name:
 			return True
@@ -171,11 +171,24 @@ def checkDuplicate(characters, name):
 
 @bot.command(
 	name='context',
-	brief='Add yourself to the initiative',
+	brief='Move to the next round of initiative',
 	pass_context=True)
 async def initiativeNext(context, *args):
-	global cursor
+	global cursor, connection
+	msg = ""
 	try:
+		# Grab the initiative
+		cursor.execute("SELECT label, round_number, cur_initiative FROM initiatives WHERE channel_id=?", (context.channel.id,))
+		initiative = cursor.fetchone()
+		# Check if it's open or if the cur initiative is -1
+		if (initiative[2] < 0):
+			await context.send("Starting a new round of initiative...")
+			#reset initiative
+			#roll for all the players and update their fields
+			#update the round number and the cur_initiative in initiatives
+			#commit it
+
+		# Else, iterate and find the next person in the initiative and store that value. (I can probably do all this in the SQL call)
 		print(p)
 	except Exception as e:
 			await context.send("An error occurred while moving to next initiative")
@@ -185,8 +198,6 @@ async def initiativeNext(context, *args):
 @bot.event
 async def on_ready():
     print("Logged in as " + bot.user.name)
-
-
 
 
 bot.run(TOKEN)
