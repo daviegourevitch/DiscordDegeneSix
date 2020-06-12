@@ -5,10 +5,8 @@ import discord
 from discord.ext.commands import Bot, when_mentioned_or
 import sqlite3
 
-#from degenesis_messages import *
 
-#joke:
-import time
+TOKEN = "NzA5NjA5MjA5NDEwNDg2Mjg0.Xrtnpg.wj3EB8vh1vZXAuq22NF9Pzejg5Q"
 
 # Setup database
 try:
@@ -23,19 +21,20 @@ except Exception as e:
 
 # Setup Bot
 BOT_PREFIX = ("!")
-TOKEN = os.environ.get('TOKEN')
+#TOKEN = os.environ.get('TOKEN')
 bot = Bot(command_prefix=when_mentioned_or(*BOT_PREFIX))
 print("Current token: " + TOKEN)
 
 
-def roll(numDice):
-	autos = max(numDice-12, 0)
-	rolls = np.random.randint(1, 7, numDice-autos)
-	ones = countOnes(rolls)
-	successes = countSuccesses(rolls)
-	triggers = countTriggers(rolls)
+def roll(numDice, numEgo):
+	totalDice = (numDice + numEgo if numEgo else numDice)
+	autos = max(totalDice-12, 0)
+	results = np.random.randint(1, 7, totalDice-autos)
+	ones = countOnes(results)
+	successes = countSuccesses(results)
+	triggers = countTriggers(results)
 	return {
-		"rolls": rolls,
+		"results": results,
 		"ones": ones,
 		"successes": successes,
 		"triggers": triggers
@@ -177,22 +176,76 @@ async def initiativeNext(context, *args):
 	global cursor, connection
 	msg = ""
 	try:
+		await context.trigger_typing()
+
 		# Grab the initiative
 		cursor.execute("SELECT label, round_number, cur_initiative FROM initiatives WHERE channel_id=?", (context.channel.id,))
 		initiative = cursor.fetchone()
-		# Check if it's open or if the cur initiative is -1
-		if (initiative[2] < 0):
-			await context.send("Starting a new round of initiative...")
-			#reset initiative
+		if (not initiative):
+			await context.send("There is no active initiative in this channel")
+			return
+
+		# Grab the characters
+		characters = cursor.fetchall()
+		if (not characters):
+			await context.send("There is no one in this channel's initiative")
+			return
+
+		roundNum = initiatve[2]
+		# Check if we need to restart initiative
+		if (roundNum < 0):
+			msg += "Starting round " + str(initiative[1]) + " of initiative" + ((" " + initiative[0]) if initiative [0] else "") + "..."
+			cursor.execute("SELECT mention, name, num_dice, num_ego from characters WHERE channel_id=?", (context.channel.id,))
+			msg += str(initiative[1])
 			#roll for all the players and update their fields
+			for character in characters:
+				result = roll(character[2], character[3]) #Dice, ego
+				character += (result["successes"], result["triggers"], result["ones"])
+
+			successDict = sortCharactersBySuccesses(characters)
+			maxVal = -1
+			for val in successDict:
+				if val > maxVal:
+					maxVal = val
+				cursor.execute("REPLACE INTO initiative_values(channel_id, value) VALUES(?,?)", (val, context.channel.id,))
+				for character in successDict[val]:
+					cursor.execute("REPLACE INTO characters(num_successes, num_triggers, num_ones) VALUES(?,?,?) WHERE channel_id=?", (character[4], character[5], character[6], context.channel.id,))
+			connection.commit()
+			roundNum = maxVal
 			#update the round number and the cur_initiative in initiatives
 			#commit it
 
-		# Else, iterate and find the next person in the initiative and store that value. (I can probably do all this in the SQL call)
-		print(p)
+		# Do the round
+		cursor.execute("SELECT mention, name, num_ego, num_successes, num_triggers FROM characters WHERE channel_id=? AND num_successes=?", (context.channel.id, roundNum))
+		characters = cursor.fetchall()
+		msg += "Round " + str(roundNum) +":\n"
+		for character in characters:
+			msg += character[0] + ", it is " + (character[1] + "\'s turn." if character[1] else "your turn.")
+			extraActions = floor(character[4]/2)
+			if (extraActions > 0 or (initiative[1] == 1 and character[2])):
+				msg += "You have "
+			if (extraActions > 0):
+				msg += str(extraActions) + " extra actions"
+			if (extraActions > 0 and initiative[1] == 1 and character[2]):
+				msg += " and "
+			if (initiative[1] == 1 and character[2]):
+				msg += str(character[2]) + " extra dice for your first action (from ego)\n"
+		# update the round number
+		await context.send(msg)
 	except Exception as e:
 			await context.send("An error occurred while moving to next initiative")
 			await context.send(e)
+
+
+def sortCharactersBySuccesses(characters):
+	dict = {}
+	for character in characters:
+		if (character[4] in dict):
+			dict[character[4]] += character
+		else:
+			dict[character[4]] = [character]
+	return dict
+
 
 
 @bot.event

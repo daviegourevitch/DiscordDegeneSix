@@ -1,7 +1,7 @@
 CREATE TABLE IF NOT EXISTS initiatives
 (
 	channel_id		 	TEXT,
-	round_number		INTEGER DEFAULT 0,
+	round_number		INTEGER DEFAULT 1,
 	cur_initiative 	INTEGER DEFAULT -1,
 	label						TEXT DEFAULT NULL,
 	verbose					INTEGER DEFAULT 1,
@@ -13,10 +13,19 @@ CREATE TABLE IF NOT EXISTS characters
 	channel_id	  	TEXT,
 	mention					TEXT,
 	name				 		TEXT DEFAULT NULL,
-	num_triggers 		INTEGER,
-	num_successes		INTEGER,
 	num_dice				INTEGER,
 	num_ego					INTEGER DEFAULT 0,
+	num_successes		INTEGER,
+	num_triggers 		INTEGER,
+	num_ones				INTEGER,
 	PRIMARY KEY (channel_id, mention),
+	FOREIGN KEY (channel_id) REFERENCES initiatives(initiative_id)
+);
+
+CREATE TABLE IF NOT EXISTS initiative_values
+(
+	channel_id			TEXT,
+	value						INTEGER,
+	PRIMARY KEY (channel_id),
 	FOREIGN KEY (channel_id) REFERENCES initiatives(initiative_id)
 );
