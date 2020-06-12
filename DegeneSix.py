@@ -6,7 +6,7 @@ from discord.ext.commands import Bot, when_mentioned_or
 import sqlite3
 
 
-TOKEN = "NzA5NjA5MjA5NDEwNDg2Mjg0.Xrtnpg.wj3EB8vh1vZXAuq22NF9Pzejg5Q"
+TOKEN = "NzA5NjA5MjA5NDEwNDg2Mjg0.XuPG7g.1Wpeb7bjTx74CzphFHepa0GSR4E"
 
 # Setup database
 try:
@@ -89,7 +89,7 @@ async def initiativeStart(context, label:str=None):
 		async with context.typing():
 			#TODO - check and send if we deleted an initiative
 			cursor.execute("REPLACE INTO initiatives(channel_id, label) VALUES(?,?)", (context.channel.id, label))
-			cursor.execute("DELETE FROM characters WHERE channel_id=?", (id,))
+			cursor.execute("DELETE FROM characters WHERE channel_id=?", (context.channel.id,))
 			connection.commit()
 			msg = "Initiative " + (label + " " if label else "") + "started!\nUse `!initiative [name] [dice] [ego]` (name and ego are optional) to join\nType `!next` to start!"
 		await context.send(msg)
@@ -120,11 +120,10 @@ async def initiativeAdd(context, *args):
 		if (not initiative):
 			await context.send("There is no active initiative in this channel.")
 			return
-		await context.send(initiative)
 		if (initiative[1] >= 0):
 			msg += "The initiative in this channel has already started. You will join at the beginning of the next round\n"
 		# Check if the player is already in that initiative
-		cursor.execute("SELECT discord_id, name FROM characters WHERE channel_id=? AND mention=?", (context.channel.id, context.author.mention))
+		cursor.execute("SELECT name FROM characters WHERE channel_id=? AND mention=?", (context.channel.id, context.author.mention))
 		characters = cursor.fetchall()
 		if (checkDuplicate(characters, name)):
 			msg += ("" + name if name else context.author.display_name) + " was already in the initiative. Overwriting...\n"
@@ -163,14 +162,15 @@ def checkDuplicate(characters, name):
 	if (len(characters) > 0 and len(name) == 0):
 		return True
 	for character in characters:
-		if character[1] == name:
+		if character[0] == name:
 			return True
 	return False
 
 
 @bot.command(
-	name='context',
+	name='next',
 	brief='Move to the next round of initiative',
+	aliases=['next-initiatve'],
 	pass_context=True)
 async def initiativeNext(context, *args):
 	global cursor, connection
@@ -181,7 +181,8 @@ async def initiativeNext(context, *args):
 		# Grab the initiative
 		cursor.execute("SELECT label, round_number, cur_initiative FROM initiatives WHERE channel_id=?", (context.channel.id,))
 		initiative = cursor.fetchone()
-		if (not initiative):
+		await context.send(str(initiative) + "asdf")
+		if (not initiative or len(initiative) == 0):
 			await context.send("There is no active initiative in this channel")
 			return
 
