@@ -5,8 +5,8 @@ import discord
 from discord.ext.commands import Bot, when_mentioned_or
 import sqlite3
 
+from degenesis_token import TOKEN
 
-TOKEN = "NzA5NjA5MjA5NDEwNDg2Mjg0.XuPG7g.1Wpeb7bjTx74CzphFHepa0GSR4E"
 
 # Setup database
 try:
