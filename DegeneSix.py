@@ -41,15 +41,12 @@ def roll(numDice, numEgo):
 	}
 
 def countOnes(rolls):
-	print(rolls)
 	return (rolls == 1).sum()
 
 def countSuccesses(rolls):
-	print(rolls)
 	return (rolls >= 4).sum()
 
 def countTriggers(rolls):
-	print(rolls)
 	return (rolls == 6).sum()
 
 # Roller
@@ -284,6 +281,7 @@ def sortCharactersBySuccesses(characters):
 			dict[character[4]] += character
 		else:
 			dict[character[4]] = [character]
+	print(dict)
 	return dict
 
 
