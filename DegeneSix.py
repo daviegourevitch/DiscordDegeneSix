@@ -2,6 +2,7 @@
 import numpy as np
 import os
 import discord
+import math
 from discord.ext.commands import Bot, when_mentioned_or
 import sqlite3
 
@@ -27,12 +28,12 @@ print("Current token: " + TOKEN)
 
 
 def roll(numDice, numEgo):
-	totalDice = (numDice + numEgo if numEgo else numDice)
+	totalDice = ((numDice + numEgo) if numEgo else numDice)
 	autos = max(totalDice-12, 0)
 	results = np.random.randint(1, 7, totalDice-autos)
-	ones = countOnes(results)
-	successes = countSuccesses(results)
-	triggers = countTriggers(results)
+	ones = countOnes(results).item()
+	successes = countSuccesses(results).item()
+	triggers = countTriggers(results).item()
 	return {
 		"results": results,
 		"ones": ones,
@@ -123,7 +124,7 @@ async def initiativeAdd(context, *args):
 		cursor.execute("SELECT label, cur_initiative FROM initiatives WHERE channel_id=?", (context.channel.id,))
 		initiative = cursor.fetchone()
 		if (not initiative):
-			await context.send("There is no active initiative in this channel.")
+			await context.send("There is no active initiative in this channel")
 			return
 		if (initiative[1] >= 0):
 			msg += "The initiative in this channel has already started. You will join at the beginning of the next round\n"
@@ -163,9 +164,10 @@ def parseInitiativeAdd(args):
 		return None
 
 def checkDuplicate(characters, name):
+	# Bug - they may have used a name beforehand, but not here
 	if (len(characters) == 0):
 		return False
-	if (len(characters) > 0 and len(name) == 0):
+	if (len(characters) > 0 and name is None):
 		return True
 	for character in characters:
 		if character[0] == name:
@@ -176,7 +178,7 @@ def checkDuplicate(characters, name):
 	name='verbose',
 	brief='Change the verbosity of the initiative functions',
 	pass_context=True)
-async def initiativeNext(context, option:str):
+async def verbose(context, option:str):
 	global cursor, connection
 	try:
 		await context.trigger_typing()
@@ -195,7 +197,18 @@ async def initiativeNext(context, option:str):
 		await context.send("Error while changing verbosity")
 		await context.send(e)
 
-
+@bot.command(
+	name='debugDB',
+	brief='Debug the DB',
+	pass_context=True)
+async def debugDB(context, field:str):
+	global cursor, connection
+	try:
+		cursor.execute("SELECT * FROM " + field)
+		result = cursor.fetchall()
+		await context.send(str(result))
+	except Exception as e:
+		await context.send(e)
 
 @bot.command(
 	name='next',
@@ -209,13 +222,13 @@ async def initiativeNext(context, *args):
 		await context.trigger_typing()
 
 		# Grab the initiative
-		cursor.execute("SELECT label, round_number, cur_initiative FROM initiatives WHERE channel_id=?", (context.channel.id,))
+		cursor.execute("SELECT label, round_number, cur_initiative, verbose FROM initiatives WHERE channel_id=?", (context.channel.id,))
 		initiative = cursor.fetchone()
-		await context.send(str(initiative) + "asdf")
-		if (not initiative or len(initiative) == 0):
+		if (not initiative):
 			await context.send("There is no active initiative in this channel")
 			return
 		cur_initiative = initiative[2]
+		roundNumber = initiative[1]
 
 		# Grab the characters
 		cursor.execute("SELECT mention, name, num_dice, num_ego from characters WHERE channel_id=?", (context.channel.id,))
@@ -226,62 +239,75 @@ async def initiativeNext(context, *args):
 
 		# Check if we need to restart initiative
 		if (cur_initiative < 0):
-			msg += "Starting round " + str(initiative[1]) + " of initiative" + ((" " + initiative[0]) if initiative [0] else "") + "..."
-			msg += str(initiative[1])
-			#roll for all the players and update their fields
+			msg += "Starting round " + str(initiative[1]) + " of initiative" + ((" \"" + initiative[0] + "\"") if initiative [0] else "") + "...\n"
+			cursor.execute("DELETE FROM initiative_values WHERE channel_id=?", (context.channel.id,))
+			# Roll for everyone
+			rolledCharacters = []
 			for character in characters:
-				if (initiative[1] == 1):
-					ego = character[3]
-				else:
-					ego = 0
-				result = roll(character[2], ego) #Dice, ego
-				character += (result["successes"], result["triggers"], result["ones"])
-
-			successDict = sortCharactersBySuccesses(characters)
-			await context.send(successDict)
+				result = roll(character[2], (character[3] if character[3] else 0)) #Dice, ego
+				rolledCharacters.append(character + (result["successes"], result["triggers"], result["ones"]))
+			# Sort them and add to DB
+			successDict = sortCharactersBySuccesses(rolledCharacters)
 			maxVal = -1
 			for val in successDict:
 				if val > maxVal:
 					maxVal = val
-				cursor.execute("REPLACE INTO initiative_values(channel_id, value) VALUES(?,?)", (val, context.channel.id,))
+				cursor.execute("REPLACE INTO initiative_values(channel_id, value) VALUES(?,?)", (val, context.channel.id))
 				for character in successDict[val]:
-					cursor.execute("REPLACE INTO characters(num_successes, num_triggers, num_ones) VALUES(?,?,?) WHERE channel_id=?", (character[4], character[5], character[6], context.channel.id,))
+					insertionTuple = (context.channel.id, character[0], character[1], character[2], character[3], character[4], character[5], character[6])
+					cursor.execute("REPLACE INTO characters(channel_id, mention, name, num_dice, num_ego, num_successes, num_triggers, num_ones) VALUES(?,?,?,?,?,?,?,?)", insertionTuple)
 			connection.commit()
 			cur_initiative = maxVal
-			#update the round number and the cur_initiative in initiatives
-			#commit it
+			roundNumber += 1
+			# Print the overview
+			msg += "Initiative order:\n"
+			for val in reversed(range(maxVal+1)):
+				if (val in successDict):
+					names = []
+					for character in successDict[val]:
+						names = character[1] if character[1] else character[0]
+					msg += "\t" + str(val) + ": " + str(names) + "\n"
+			await context.send(msg)
+			msg = ""
+			await context.trigger_typing()
 
 		# Do the round
 		cursor.execute("SELECT mention, name, num_ego, num_successes, num_triggers FROM characters WHERE channel_id=? AND num_successes=?", (context.channel.id, cur_initiative))
 		characters = cursor.fetchall()
-		msg += "Round " + str(roundNum) +":\n"
+		# msg += "Round " + str(initiative[1]) +":\n" #delete this?
 		for character in characters:
-			msg += character[0] + ", it is " + (character[1] + "\'s turn." if character[1] else "your turn.")
-			extraActions = floor(character[4]/2)
+			msg += character[0] + ", it is " + (character[1] + "\'s turn. " if character[1] else "your turn. ")
+			extraActions = math.floor(int(character[4])/2)
 			if (extraActions > 0 or (initiative[1] == 1 and character[2])):
 				msg += "You have "
 			if (extraActions > 0):
-				msg += str(extraActions) + " extra actions"
+				msg += str(extraActions) + " extra action(s) from triggers"
 			if (extraActions > 0 and initiative[1] == 1 and character[2]):
 				msg += " and "
 			if (initiative[1] == 1 and character[2]):
 				msg += str(character[2]) + " extra dice for your first action (from ego)\n"
 		# update the round number
+		cursor.execute("SELECT MAX(value) FROM initiative_values WHERE value < ?", (cur_initiative,))
+		nextInitiative = cursor.fetchone()[0]
+		await context.send("I calculated the next initiative as " + str(nextInitiative))
+		nextInitiative = nextInitiative[0] if nextInitiative else -1
+		insertionTuple = (context.channel.id, initiative[0], roundNumber, nextInitiative, initiative[3])
+		cursor.execute("REPLACE INTO initiatives(channel_id, label, round_number, cur_initiative, verbose) VALUES(?,?,?,?,?)", insertionTuple)
+
 		await context.send(msg)
 
 	except Exception as e:
-			await context.send("An error occurred while moving to next initiative")
-			await context.send(e)
+		await context.send("An error occurred while moving to next initiative")
+		await context.send(e)
 
 
 def sortCharactersBySuccesses(characters):
 	dict = {}
 	for character in characters:
 		if (character[4] in dict):
-			dict[character[4]] += character
+			dict[character[4]].append(character)
 		else:
 			dict[character[4]] = [character]
-	print(dict)
 	return dict
 
 
