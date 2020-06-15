@@ -92,15 +92,28 @@ async def initiativeStart(context, label:str=None):
 			previousInitiative = cursor.fetchone()
 			if (previousInitiative and len(previousInitiative) > 0):
 				msg += "Deleting previous " + (("initiative \"" + str(previousInitiative[0]) +"\"") if previousInitiative[0] else "initiative") + "...\n"
-			cursor.execute("REPLACE INTO initiatives(channel_id, label) VALUES(?,?)", (context.channel.id, label))
+			cursor.execute("REPLACE INTO initiatives(channel_id, label, start_time) VALUES(?,?,DATE('now'))", (context.channel.id, label))
 			cursor.execute("DELETE FROM characters WHERE channel_id=?", (context.channel.id,))
 			cursor.execute("DELETE FROM initiative_values WHERE channel_id=?", (context.channel.id,))
 			connection.commit()
 			msg += "Initiative " + (label + " " if label else "") + "started!\nUse `!initiative [name] [dice] [ego]` (name and ego are optional) to join\nType `!next` to start!"
 		await context.send(msg)
+		# await cleanupDB() doesn't work yet due to time comparison not being supported
 	except Exception as e:
 		await context.send("Failed to start initiative. Try a different channel, or email daviegourevitch@gmail.com for immediate help")
 		await context.send(e)
+
+async def cleanupDB():
+	global cursor, connection
+	try:
+		cursor.execute("SELECT channel_id FROM initiatives WHERE start_time < DATE('now', '-1 week')")
+		idsToDelete = cursor.fetchall()
+		for id in idsToDelete:
+			cursor.execute("DELETE FROM initiatives WHERE channel_id=?", (id,))
+			cursor.execute("DELETE FROM characters WHERE channel_id=?", (id,))
+			cursor.execute("DELETE FROM initiative_values WHERE channel_id=?", (id,))
+	except Exception as e:
+		print(e)
 
 @bot.command(
 	name='initiative',
@@ -257,7 +270,7 @@ async def initiativeNext(context, *args):
 					insertionTuple = (context.channel.id, character[0], character[1], character[2], character[3], character[4], character[5], character[6])
 					cursor.execute("REPLACE INTO characters(channel_id, mention, name, num_dice, num_ego, num_successes, num_triggers, num_ones) VALUES(?,?,?,?,?,?,?,?)", insertionTuple)
 			connection.commit()
-			cur_initiative = maxVal
+			cur_initiative = maxVal or -1
 			roundNumber += 1
 			# Print the overview
 			msg += "Initiative order:\n"
@@ -288,11 +301,12 @@ async def initiativeNext(context, *args):
 				msg += str(character[2]) + " extra dice for your first action (from ego)\n"
 		# update the round number
 		cursor.execute("SELECT MAX(value) FROM initiative_values WHERE value < ?", (cur_initiative,))
-		nextInitiative = cursor.fetchone()[0]
-		await context.send("I calculated the next initiative as " + str(nextInitiative))
-		nextInitiative = nextInitiative[0] if nextInitiative else -1
-		insertionTuple = (context.channel.id, initiative[0], roundNumber, nextInitiative, initiative[3])
+		nextInitiative = cursor.fetchone()
+		print("nextInitiative " + str(nextInitiative))
+		cur_initiative = nextInitiative[0] if nextInitiative else -1
+		insertionTuple = (context.channel.id, cur_initiative, roundNumber, nextInitiative, initiative[3])
 		cursor.execute("REPLACE INTO initiatives(channel_id, label, round_number, cur_initiative, verbose) VALUES(?,?,?,?,?)", insertionTuple)
+		connection.commit()
 
 		await context.send(msg)
 
