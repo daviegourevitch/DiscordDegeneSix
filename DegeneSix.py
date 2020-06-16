@@ -7,11 +7,9 @@ import datetime
 import math
 import numpy as np
 
-from degenesis_token import TOKEN
-
 # Setup Bot
 BOT_PREFIX = ("!")
-#TOKEN = os.environ.get('TOKEN')
+TOKEN = os.environ.get('TOKEN')
 bot = Bot(command_prefix=when_mentioned_or(*BOT_PREFIX))
 print("Current token: " + TOKEN)
 
