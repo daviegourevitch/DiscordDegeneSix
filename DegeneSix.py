@@ -1,13 +1,19 @@
 # Work with Python 3.6
-import numpy as np
 import os
 import discord
-import math
 from discord.ext.commands import Bot, when_mentioned_or
 import sqlite3
+import datetime
+import math
+import numpy as np
 
 from degenesis_token import TOKEN
 
+# Setup Bot
+BOT_PREFIX = ("!")
+#TOKEN = os.environ.get('TOKEN')
+bot = Bot(command_prefix=when_mentioned_or(*BOT_PREFIX))
+print("Current token: " + TOKEN)
 
 # Setup database
 try:
@@ -20,37 +26,6 @@ except Exception as e:
 	print("Database error")
 	exit()
 
-# Setup Bot
-BOT_PREFIX = ("!")
-#TOKEN = os.environ.get('TOKEN')
-bot = Bot(command_prefix=when_mentioned_or(*BOT_PREFIX))
-print("Current token: " + TOKEN)
-
-
-def roll(numDice, numEgo):
-	totalDice = ((numDice + numEgo) if numEgo else numDice)
-	autos = max(totalDice-12, 0)
-	results = np.random.randint(1, 7, totalDice-autos)
-	ones = countOnes(results).item()
-	successes = countSuccesses(results).item()
-	triggers = countTriggers(results).item()
-	return {
-		"results": results,
-		"ones": ones,
-		"successes": successes,
-		"triggers": triggers
-	}
-
-def countOnes(rolls):
-	return (rolls == 1).sum()
-
-def countSuccesses(rolls):
-	return (rolls >= 4).sum()
-
-def countTriggers(rolls):
-	return (rolls == 6).sum()
-
-# Roller
 @bot.command(
     name='Degene6',
     description="Rolls a Degenesis dice pool.",
@@ -78,7 +53,58 @@ async def degenesix(context,actionNumber:int,difficulty=0):
     result)
     await context.send(msg)
 
-# Initiative stuff
+########################## Roll utilities ##########################
+def roll(numDice, numEgo):
+	totalDice = ((numDice + numEgo) if numEgo else numDice)
+	autos = max(totalDice-12, 0)
+	results = np.random.randint(1, 7, totalDice-autos)
+	ones = countOnes(results).item()
+	successes = countSuccesses(results).item() + autos
+	triggers = countTriggers(results).item()
+	return {
+		"results": results,
+		"ones": ones,
+		"successes": successes,
+		"triggers": triggers
+	}
+
+def countOnes(rolls):
+	return (rolls == 1).sum()
+
+def countSuccesses(rolls):
+	return (rolls >= 4).sum()
+
+def countTriggers(rolls):
+	return (rolls == 6).sum()
+
+################################ Verbosity ################################
+@bot.command(
+	name='verbose',
+	brief='Change the verbosity of the initiative functions',
+	pass_context=True)
+async def verbose(context, option:str):
+	global cursor, connection
+	try:
+		await context.trigger_typing()
+		if (option.lower() == "on"):
+			choice = False
+		elif(option.lower() == "off"):
+			choice = True
+		else:
+			await context.send("Please use `on` or `off`")
+			return
+		cursor.execute("SELECT round_number, cur_initiative, label, start_time FROM initiatives WHERE channel_id=?", (context.channel.id,))
+		initiative = cursor.fetchone()
+		insertionTuple = (context.channel.id, int(choice), initiative[0], initiative[1], initiative[2], initiative[3])
+		cursor.execute("REPLACE INTO initiatives(channel_id, verbose, round_number, cur_initiative, label, start_time) VALUES(?,?,?,?,?,?)", insertionTuple)
+		connection.commit()
+		msg = "Verbose level set to: `" + option + "`"
+		await context.send(msg)
+	except Exception as e:
+		await context.send("Error while changing verbosity")
+		await context.send(e)
+
+########################## Start Initiative ##########################
 @bot.command(
 	name='start-initiative',
 	brief='Allow calls for initiative in this channel',
@@ -92,13 +118,13 @@ async def initiativeStart(context, label:str=None):
 			previousInitiative = cursor.fetchone()
 			if (previousInitiative and len(previousInitiative) > 0):
 				msg += "Deleting previous " + (("initiative \"" + str(previousInitiative[0]) +"\"") if previousInitiative[0] else "initiative") + "...\n"
-			cursor.execute("REPLACE INTO initiatives(channel_id, label, start_time) VALUES(?,?,DATE('now'))", (context.channel.id, label))
+			cursor.execute("REPLACE INTO initiatives(channel_id, label, start_time) VALUES(?,?,?)", (context.channel.id, label, datetime.date.today()))
 			cursor.execute("DELETE FROM characters WHERE channel_id=?", (context.channel.id,))
 			cursor.execute("DELETE FROM initiative_values WHERE channel_id=?", (context.channel.id,))
 			connection.commit()
-			msg += "Initiative " + (label + " " if label else "") + "started!\nUse `!initiative [name] [dice] [ego]` (name and ego are optional) to join\nType `!next` to start!"
+			msg += "Initiative " + ("\"" + label + "\" " if label else "") + "started!\nUse `!initiative [name] [dice] [ego]` (name and ego are optional) to join\nType `!next` to start!\n*This is a beta feature. If you find any bugs, please DM <@154353119352848386>*"
 		await context.send(msg)
-		# await cleanupDB() doesn't work yet due to time comparison not being supported
+		await cleanupDB()
 	except Exception as e:
 		await context.send("Failed to start initiative. Try a different channel, or email daviegourevitch@gmail.com for immediate help")
 		await context.send(e)
@@ -106,15 +132,24 @@ async def initiativeStart(context, label:str=None):
 async def cleanupDB():
 	global cursor, connection
 	try:
-		cursor.execute("SELECT channel_id FROM initiatives WHERE start_time < DATE('now', '-1 week')")
-		idsToDelete = cursor.fetchall()
-		for id in idsToDelete:
-			cursor.execute("DELETE FROM initiatives WHERE channel_id=?", (id,))
-			cursor.execute("DELETE FROM characters WHERE channel_id=?", (id,))
-			cursor.execute("DELETE FROM initiative_values WHERE channel_id=?", (id,))
+		cursor.execute("SELECT channel_id, start_time FROM initiatives")
+		initiativesToCheck = cursor.fetchall()
+		oldestDate = datetime.date.today() - datetime.timedelta(days=45)
+		for initiative in initiativesToCheck:
+			date = datetime.datetime.strptime(initiative[1], '%Y-%m-%d')
+			date = datetime.date(date.year, date.month, date.day)
+			if (date < oldestDate):
+				id = initiative[0]
+				cursor.execute("DELETE FROM initiatives WHERE channel_id=?", (id,))
+				cursor.execute("DELETE FROM characters WHERE channel_id=?", (id,))
+				cursor.execute("DELETE FROM initiative_values WHERE channel_id=?", (id,))
+				print("deletted")
+			connection.commit()
 	except Exception as e:
 		print(e)
 
+
+########################## Add to Initiative ##########################
 @bot.command(
 	name='initiative',
 	brief='Add yourself to the initiative',
@@ -125,36 +160,38 @@ async def initiativeAdd(context, *args):
 	msg = ""
 	try:
 		await context.trigger_typing()
+		# Parse and validate
 		parsedArgs = parseInitiativeAdd(args)
 		if (not parsedArgs):
 			await context.send("Invalid input. Use `!help initiative` for more info.")
 			return
-		name = parsedArgs[0]
+		name = parsedArgs[0] if parsedArgs[0] else ""
 		dice = parsedArgs[1]
 		ego = parsedArgs[2]
-
+		if (dice < 0 or (ego and ego < 0)):
+			await context.send("Invalid input. Use `!help initiative` for more info.")
+			return
 		# Check that the initiative exists and is open
-		cursor.execute("SELECT label, cur_initiative FROM initiatives WHERE channel_id=?", (context.channel.id,))
+		cursor.execute("SELECT label, cur_initiative, verbose FROM initiatives WHERE channel_id=?", (context.channel.id,))
 		initiative = cursor.fetchone()
 		if (not initiative):
 			await context.send("There is no active initiative in this channel")
 			return
 		if (initiative[1] >= 0):
 			msg += "The initiative in this channel has already started. You will join at the beginning of the next round\n"
-
 		# Check if the player is already in that initiative
-		cursor.execute("SELECT name FROM characters WHERE channel_id=? AND mention=?", (context.channel.id, context.author.mention))
+		cursor.execute("SELECT name FROM characters WHERE channel_id=? AND mention=? AND name=?", (context.channel.id, context.author.mention, name))
 		characters = cursor.fetchall()
-		if (checkDuplicate(characters, name)):
-			msg += ("" + name if name else context.author.display_name) + " was already in the initiative. Overwriting...\n"
+		if (len(characters) > 0):
+			if (not bool(initiative[2])):
+				msg += (name if name else context.author.display_name) + " was already in the initiative. Overwriting...\n"
 		# Add them and send message
 		cursor.execute("REPLACE INTO characters(channel_id, mention, name, num_dice, num_ego) VALUES(?,?,?,?,?)", (context.channel.id, context.author.mention, name, dice, ego))
 		connection.commit()
 		msg += "Player " + (name if name else context.author.mention) + " was added to the initiative with " + str(dice) + " dice" + ((" and " + str(ego) + " ego") if ego else "")
 		await context.send(msg)
 	except Exception as e:
-			await context.send("An error occurred while adding you to the initiative")
-			await context.send(e)
+		await context.send("An error occurred while adding you to the initiative")
 
 def parseInitiativeAdd(args):
 	try:
@@ -176,53 +213,7 @@ def parseInitiativeAdd(args):
 	except:
 		return None
 
-def checkDuplicate(characters, name):
-	# Bug - they may have used a name beforehand, but not here
-	if (len(characters) == 0):
-		return False
-	if (len(characters) > 0 and name is None):
-		return True
-	for character in characters:
-		if character[0] == name:
-			return True
-	return False
-
-@bot.command(
-	name='verbose',
-	brief='Change the verbosity of the initiative functions',
-	pass_context=True)
-async def verbose(context, option:str):
-	global cursor, connection
-	try:
-		await context.trigger_typing()
-		if (option.lower() == "on"):
-			choice = False
-		elif(option.lower() == "off"):
-			choice = True
-		else:
-			await context.send("Please use `on` or `off`")
-			return
-		cursor.execute("REPLACE INTO initiatives(channel_id, verbose) VALUES(?,?)", (context.channel.id, int(choice)))
-		connection.commit()
-		msg = "Verbose level set to: `" + option + "`"
-		await context.send(msg)
-	except Exception as e:
-		await context.send("Error while changing verbosity")
-		await context.send(e)
-
-@bot.command(
-	name='debugDB',
-	brief='Debug the DB',
-	pass_context=True)
-async def debugDB(context, field:str):
-	global cursor, connection
-	try:
-		cursor.execute("SELECT * FROM " + field)
-		result = cursor.fetchall()
-		await context.send(str(result))
-	except Exception as e:
-		await context.send(e)
-
+########################## Moving between turns ##########################
 @bot.command(
 	name='next',
 	brief='Move to the next round of initiative',
@@ -233,7 +224,6 @@ async def initiativeNext(context, *args):
 	msg = ""
 	try:
 		await context.trigger_typing()
-
 		# Grab the initiative
 		cursor.execute("SELECT label, round_number, cur_initiative, verbose FROM initiatives WHERE channel_id=?", (context.channel.id,))
 		initiative = cursor.fetchone()
@@ -241,18 +231,17 @@ async def initiativeNext(context, *args):
 			await context.send("There is no active initiative in this channel")
 			return
 		cur_initiative = initiative[2]
-		roundNumber = initiative[1]
-
+		round_number = initiative[1]
 		# Grab the characters
 		cursor.execute("SELECT mention, name, num_dice, num_ego from characters WHERE channel_id=?", (context.channel.id,))
 		characters = cursor.fetchall()
 		if (not characters):
 			await context.send("There is no one in this channel's initiative")
 			return
-
 		# Check if we need to restart initiative
 		if (cur_initiative < 0):
-			msg += "Starting round " + str(initiative[1]) + " of initiative" + ((" \"" + initiative[0] + "\"") if initiative [0] else "") + "...\n"
+			round_number += 1
+			msg += "Starting round " + str(round_number) + " of initiative" + ((" \"" + initiative[0] + "\"") if initiative [0] else "") + "...\n"
 			cursor.execute("DELETE FROM initiative_values WHERE channel_id=?", (context.channel.id,))
 			# Roll for everyone
 			rolledCharacters = []
@@ -261,54 +250,51 @@ async def initiativeNext(context, *args):
 				rolledCharacters.append(character + (result["successes"], result["triggers"], result["ones"]))
 			# Sort them and add to DB
 			successDict = sortCharactersBySuccesses(rolledCharacters)
-			maxVal = -1
 			for val in successDict:
-				if val > maxVal:
-					maxVal = val
-				cursor.execute("REPLACE INTO initiative_values(channel_id, value) VALUES(?,?)", (val, context.channel.id))
+				if val > cur_initiative:
+					cur_initiative = val
+				cursor.execute("REPLACE INTO initiative_values(channel_id, value) VALUES(?,?)", (context.channel.id, val))
 				for character in successDict[val]:
 					insertionTuple = (context.channel.id, character[0], character[1], character[2], character[3], character[4], character[5], character[6])
 					cursor.execute("REPLACE INTO characters(channel_id, mention, name, num_dice, num_ego, num_successes, num_triggers, num_ones) VALUES(?,?,?,?,?,?,?,?)", insertionTuple)
 			connection.commit()
-			cur_initiative = maxVal or -1
-			roundNumber += 1
 			# Print the overview
 			msg += "Initiative order:\n"
-			for val in reversed(range(maxVal+1)):
+			for val in reversed(range(cur_initiative+1)):
 				if (val in successDict):
 					names = []
 					for character in successDict[val]:
-						names = character[1] if character[1] else character[0]
-					msg += "\t" + str(val) + ": " + str(names) + "\n"
+						names.append(character[1] if character[1] else character[0])
+					msg += "\t" + str(val) + ":\t" + ", ".join(names) + "\n"
 			await context.send(msg)
 			msg = ""
 			await context.trigger_typing()
 
-		# Do the round
+		# Do the turn
 		cursor.execute("SELECT mention, name, num_ego, num_successes, num_triggers FROM characters WHERE channel_id=? AND num_successes=?", (context.channel.id, cur_initiative))
 		characters = cursor.fetchall()
-		# msg += "Round " + str(initiative[1]) +":\n" #delete this?
+		msg += str(cur_initiative) + " successe(s):\n"
 		for character in characters:
-			msg += character[0] + ", it is " + (character[1] + "\'s turn. " if character[1] else "your turn. ")
-			extraActions = math.floor(int(character[4])/2)
+			msg += character[0] + ", it is " + (character[1] + "\'s turn. " if character[1] else "your turn.")
+			extraActions = math.floor(character[4]/2)
 			if (extraActions > 0 or (initiative[1] == 1 and character[2])):
-				msg += "You have "
+				msg += " You have "
 			if (extraActions > 0):
 				msg += str(extraActions) + " extra action(s) from triggers"
-			if (extraActions > 0 and initiative[1] == 1 and character[2]):
+			if (extraActions > 0 and round_number == 1 and character[2]):
 				msg += " and "
-			if (initiative[1] == 1 and character[2]):
-				msg += str(character[2]) + " extra dice for your first action (from ego)\n"
+			if (round_number == 1 and character[2]):
+				msg += str(character[2]) + " extra dice for your first action (from ego)"
+			msg += "\n"
+		await context.send(msg)
+
 		# update the round number
 		cursor.execute("SELECT MAX(value) FROM initiative_values WHERE value < ?", (cur_initiative,))
 		nextInitiative = cursor.fetchone()
-		print("nextInitiative " + str(nextInitiative))
-		cur_initiative = nextInitiative[0] if nextInitiative else -1
-		insertionTuple = (context.channel.id, cur_initiative, roundNumber, nextInitiative, initiative[3])
-		cursor.execute("REPLACE INTO initiatives(channel_id, label, round_number, cur_initiative, verbose) VALUES(?,?,?,?,?)", insertionTuple)
+		cur_initiative = -1 if (nextInitiative[0] is None) else nextInitiative[0]
+		insertionTuple = (context.channel.id, initiative[0], round_number, cur_initiative, initiative[3], datetime.date.today())
+		cursor.execute("REPLACE INTO initiatives(channel_id, label, round_number, cur_initiative, verbose, start_time) VALUES(?,?,?,?,?,?)", insertionTuple)
 		connection.commit()
-
-		await context.send(msg)
 
 	except Exception as e:
 		await context.send("An error occurred while moving to next initiative")
@@ -324,6 +310,20 @@ def sortCharactersBySuccesses(characters):
 			dict[character[4]] = [character]
 	return dict
 
+########################## Debugging Functions ##########################
+@bot.command(
+	name='debugDB',
+	brief='Debug the DB',
+    enabled=True,
+	pass_context=True)
+async def debugDB(context, field:str):
+	global cursor, connection
+	try:
+		cursor.execute("SELECT * FROM " + field)
+		result = cursor.fetchall()
+		await context.send(str(result))
+	except Exception as e:
+		await context.send(e)
 
 
 @bot.event
