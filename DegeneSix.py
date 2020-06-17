@@ -7,7 +7,7 @@ import datetime
 import math
 from discord.ext.commands import Bot, when_mentioned_or
 
-import TOKEN from degenesis_token
+from degenesis_token import TOKEN
 
 # Globals
 MAX_EGO = 50
