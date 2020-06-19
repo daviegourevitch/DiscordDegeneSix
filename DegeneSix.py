@@ -7,7 +7,7 @@ import datetime
 import math
 from discord.ext.commands import Bot, when_mentioned_or
 
-from degenesis_token import TOKEN
+from  degtoken import TOKEN
 
 # Globals
 MAX_EGO = 50
@@ -16,7 +16,6 @@ MAX_DICE = 100
 # Setup Bot
 BOT_PREFIX = ("?", "!")
 #TOKEN = os.environ.get('ACCESS_TOKEN') # Get at discordapp.com/developers/applications/me
-
 
 bot = Bot(command_prefix=when_mentioned_or(*BOT_PREFIX))
 
@@ -136,9 +135,9 @@ async def verbose(context, option:str):
 	try:
 		await context.trigger_typing()
 		if (option.lower() == "on"):
-			choice = False
-		elif(option.lower() == "off"):
 			choice = True
+		elif(option.lower() == "off"):
+			choice = False
 		else:
 			await context.send("Please use `on` or `off`")
 			return
@@ -165,16 +164,18 @@ async def initiativeStart(context, label:str=None):
 	global cursor, connection
 	msg = ""
 	try:
-		async with context.typing():
-			cursor.execute("SELECT label, verbose FROM initiatives WHERE channel_id=?", (context.channel.id,))
-			previousInitiative = cursor.fetchone()
-			if (previousInitiative and len(previousInitiative) > 0):
-				msg += "Deleting previous " + (("initiative \"" + str(previousInitiative[0]) +"\"") if previousInitiative[0] else "initiative") + "...\n"
-			cursor.execute("REPLACE INTO initiatives(channel_id, label, start_time, verbose) VALUES(?,?,?, verbose)", (context.channel.id, label, datetime.date.today(), previousInitiative[1]))
-			cursor.execute("DELETE FROM characters WHERE channel_id=?", (context.channel.id,))
-			cursor.execute("DELETE FROM initiative_values WHERE channel_id=?", (context.channel.id,))
-			connection.commit()
-			msg += "Initiative " + ("\"" + label + "\" " if label else "") + "started!\nUse `!initiative [name] [dice] [ego]` (name and ego are optional) to join\nType `!next` to start!\n*This is a beta feature. If you find any bugs, please DM <@154353119352848386>*"
+		await context.trigger_typing()
+		cursor.execute("SELECT label, verbose FROM initiatives WHERE channel_id=?", (context.channel.id,))
+		previousInitiative = cursor.fetchone()
+		verbose = True
+		if (previousInitiative and len(previousInitiative) > 0):
+			msg += "Deleting previous " + (("initiative \"" + str(previousInitiative[0]) +"\"") if previousInitiative[0] else "initiative") + "...\n"
+			verbose = previousInitiative[1]
+		cursor.execute("REPLACE INTO initiatives(channel_id, label, start_time, verbose) VALUES(?,?,?,?)", (context.channel.id, label, datetime.date.today(), int(verbose)))
+		cursor.execute("DELETE FROM characters WHERE channel_id=?", (context.channel.id,))
+		cursor.execute("DELETE FROM initiative_values WHERE channel_id=?", (context.channel.id,))
+		connection.commit()
+		msg += "Initiative " + ("\"" + label + "\" " if label else "") + "started!\nUse `!initiative [name] [dice] [ego]` (name and ego are optional) to join\nType `!next` to start!\n*This is a beta feature. If you find any bugs, please DM <@154353119352848386>*"
 		await context.send(msg)
 		await cleanupDB()
 	except Exception as e:
@@ -203,25 +204,25 @@ async def cleanupDB():
 	name='end-initiative',
 	brief='Remove the active initiative in this channel',
 	description='Use `!end-initiative` to remove this channel\'s initiative. Note: start-initiative also deletes the previous initiative.',
-	aliases=['end', 'stop-initiative', 'stop'],
+	aliases=['end', 'stop-initiative', 'stop', 'delete-initiative'],
 	commands_heading='initiative',
 	pass_context=True)
 async def initiativeEnd(context, label:str=None):
 	global cursor, connection
 	msg = "Deleted initiative \""
 	try:
-		async with context.typing():
-			cursor.execute("SELECT label FROM initiatives WHERE channel_id=?", (context.channel.id,))
-			previousInitiative = cursor.fetchone()
-			if (previousInitiative and len(previousInitiative) > 0):
-				msg += previousInitiative[0] + "\""
-			else:
-				await context.send("This channel has no active initiative.")
-				return
-			cursor.execute("DELETE FROM initiatives WHERE channel_id=?", (context.channel.id,))
-			cursor.execute("DELETE FROM characters WHERE channel_id=?", (context.channel.id,))
-			cursor.execute("DELETE FROM initiative_values WHERE channel_id=?", (context.channel.id,))
-			connection.commit()
+		await context.trigger_typing()
+		cursor.execute("SELECT label FROM initiatives WHERE channel_id=?", (context.channel.id,))
+		previousInitiative = cursor.fetchone()
+		if (previousInitiative and len(previousInitiative) > 0):
+			msg += previousInitiative[0] + "\""
+		else:
+			await context.send("This channel has no active initiative.")
+			return
+		cursor.execute("DELETE FROM initiatives WHERE channel_id=?", (context.channel.id,))
+		cursor.execute("DELETE FROM characters WHERE channel_id=?", (context.channel.id,))
+		cursor.execute("DELETE FROM initiative_values WHERE channel_id=?", (context.channel.id,))
+		connection.commit()
 		await context.send(msg)
 	except Exception as e:
 		await context.send("Failed to delete initiative. Try a different channel, or ping <@154353119352848386> for immediate help")
@@ -251,7 +252,7 @@ async def initiativeAdd(context, *args):
 			await context.send("Invalid input: negative numbers are not allowed. Use `!help initiative` for more info.")
 			return
 		if (dice > MAX_DICE or (ego and ego > MAX_EGO)):
-			msg = "Invalid input: max dice is " + str(MAX_DICE) + " and max ego is " + str(MAX_EGO) + ". Use `!help initiative` for more info.""
+			msg = "Invalid input: max dice is " + str(MAX_DICE) + " and max ego is " + str(MAX_EGO) + ". Use `!help initiative` for more info."
 			await context.send(msg)
 			return
 		# Check that the initiative exists and is open
@@ -266,8 +267,8 @@ async def initiativeAdd(context, *args):
 		cursor.execute("SELECT name FROM characters WHERE channel_id=? AND mention=?", (context.channel.id, context.author.mention))
 		characters = cursor.fetchall()
 		if (checkDuplicates(characters, name)):
-			if (not bool(initiative[2])):
-				msg += (("Character \"" + name + "\"") if name else context.author.display_name) + " was already in the initiative. Overwriting...\n"
+			if (bool(initiative[2])): #verbose
+				msg += "Duplicate character, overwriting...\n"
 		# Add them and send message
 		cursor.execute("REPLACE INTO characters(channel_id, mention, name, num_dice, num_ego) VALUES(?,?,?,?,?)", (context.channel.id, context.author.mention, name, dice, ego))
 		connection.commit()
@@ -277,9 +278,9 @@ async def initiativeAdd(context, *args):
 		await context.send("An error occurred while adding you to the initiative. Ping <@154353119352848386> for immediate help")
 
 def checkDuplicates(characters, name):
-	name = "" if None else name
+	name = name if name else ""
 	for characterName in characters:
-		if (characterName == name):
+		if (characterName[0] == name):
 			return True
 	return False
 
@@ -303,6 +304,30 @@ def parseInitiativeAdd(args):
 	except:
 		return None
 
+@bot.command(
+	name='say',
+	pass_context=True)
+async def say(context, text:str):
+	await context.send(text)
+
+@bot.command(
+	name='epic',
+	pass_context=True)
+async def epic(context):
+	await context.send("epic")
+
+@bot.command(
+	name='based',
+	pass_context=True)
+async def based(context):
+	await context.send("based")
+
+@bot.command(
+	name='cringe',
+	pass_context=True)
+async def cringe(context):
+	await context.send("cringe")
+
 ########################## Ego ##########################
 @bot.command(
 	name='ego',
@@ -319,22 +344,30 @@ async def initiativeEgo(context, *args):
 		parsedArgs = parseEgoArgs(args)
 		if (not parsedArgs):
 			await context.send("Invalid input. Use '!help ego' for more info.")
+			return
 		name = parsedArgs[0]
 		ego = parsedArgs[1]
+		if (ego < 0):
+			await context.send("Invalid input: ego must not be negative. Use '!help ego' for more info.")
+			return
+		if (ego > MAX_EGO):
+			msg = "Invalid input: ego must be less than " + str(MAX_EGO) + ". Use '!help ego' for more info."
+			await context.send(msg)
+			return
 		# Grab their original character
 		cursor.execute("SELECT * FROM characters WHERE channel_id=? AND mention=? AND name=?", (context.channel.id, context.author.mention, name))
 		character = cursor.fetchone()
-		if (not character or len(characters) is 0):
-			msg = "You do not have a character " + (("named " + name) if name else context.author.mention)
+		if (not character or len(character) == 0):
+			msg = "You do not have a character " + (("named " + name + ", ") if name else "without a name, ") + context.author.mention
 			await context.send(msg)
 			return
 		# Insert
 		insertionTuple = (character[0], character[1], character[2], character[3], ego, character[5], character[6], character[7])
-		cursor.execute("REPLACE INTO characters(channel_id, mention, name, num_dice, num_ego, num_successes, num_triggers, num_ones) VALUES(?,?,?,?,?)", (insertionTuple))
+		cursor.execute("REPLACE INTO characters(channel_id, mention, name, num_dice, num_ego, num_successes, num_triggers, num_ones) VALUES(?,?,?,?,?,?,?,?)", (insertionTuple))
 		connection.commit()
 		# Send message
 		msg = (("Character \"" + name + "\"") if name else context.author.display_name) + "\'s ego has been updated to " + str(ego)
-		await context.send()
+		await context.send(msg)
 	except Exception as e:
 		await context.send("There was an error while adding your ego. Ping <@154353119352848386> for immediate help")
 
@@ -355,7 +388,6 @@ def parseEgoArgs(args):
 	name='kill',
 	brief='Add yourself to the initiative',
 	description='Use `!kill [name]`` where the name exactly matches your character\'s name (can be blank) to add remove that character from the initiative.',
-	aliases=['kill-initiative', 'remove-initiative', 'remove'],
 	commands_heading='initiative',
 	pass_context=True)
 async def initiativeKill(context, name:str=None):
@@ -366,7 +398,7 @@ async def initiativeKill(context, name:str=None):
 		cursor.execute("SELECT * FROM characters WHERE channel_id=? AND mention=? AND name=?", (context.channel.id, context.author.mention, name))
 		character = cursor.fetchone()
 		if (not character or len(character) == 0):
-			msg = "You do not have a character " + (("named " + name) if name else context.author.mention)
+			msg = "You do not have a character " + (("named " + name + ", ") if name else "without a name, ") + context.author.mention
 			await context.send(msg)
 			return
 		cursor.execute("DELETE FROM characters WHERE channel_id=? AND mention=? AND name=?", (context.channel.id, context.author.mention, name))
@@ -484,7 +516,7 @@ def sortCharactersBySuccesses(characters):
 	name='debugDB',
 	brief='Debug the DB',
 	commands_heading='Dev',
-    enabled=False,
+    enabled=True,
 	pass_context=True)
 async def debugDB(context, field:str):
 	global cursor, connection
